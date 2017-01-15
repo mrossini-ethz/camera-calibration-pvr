@@ -112,11 +112,9 @@ def poly_div(a, b):
     na = poly_order(a)
     nb = poly_order(b)
     result = [0] * (na - nb + 1)
-    print("hello")
     for n in range(na, nb - 1, -1):
         f = a[n] / b[-1]
         result[n - nb] = f
-        print([0] * (n - nb))
         a = poly_sub(a, [0] * (n - nb) + poly_scale(b, f))
     return result
 
@@ -193,7 +191,6 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
     """Convert a 2d point in the camera plane into a 3d vector from the camera onto the camera plane"""
     # field_of_view = 2 * atan(sensor_size / 2 * focal_length), assume sensor_size = 32
     s = (16.0 / focal_length) / (scale / 2.0)
-    print((p[0] * s, p[1] * s, -1.0))
     return mathutils.Vector((p[0] * s, p[1] * s, -1.0))
 
 def calculate_focal_length(pa, pb, pc, pd, scale):
@@ -337,14 +334,32 @@ def calibrate():
     obj = bpy.context.object
     # Check whether a mesh with 4 vertices in one polygon is selected
     if not obj.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
-        print("error")
         return 2
     # Get the vertex coordinates
-    pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.to_2d()
-    pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.to_2d()
-    pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.to_2d()
-    pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.to_2d()
-    # FIXME: apply object transformations
+    pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
+    pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
+    pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.copy()
+    pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.copy()
+    # Apply the scale
+    obj_scale = obj.scale
+    for i in range(3):
+        pa[i] *= obj_scale[i]
+        pb[i] *= obj_scale[i]
+        pc[i] *= obj_scale[i]
+        pd[i] *= obj_scale[i]
+    # Apply rotation
+    obj_rotation = obj.rotation_euler
+    pa.rotate(obj_rotation)
+    pb.rotate(obj_rotation)
+    pc.rotate(obj_rotation)
+    pd.rotate(obj_rotation)
+    # Apply translation and project to x-y-plane
+    obj_translation = obj.location
+    pa = (pa + obj_translation).to_2d()
+    pb = (pb + obj_translation).to_2d()
+    pc = (pc + obj_translation).to_2d()
+    pd = (pd + obj_translation).to_2d()
+    print(obj.location)
     print("Vertices:", pa, pb, pc, pd)
     # Get the background images
     bkg_images = bpy.context.area.spaces.active.background_images
@@ -365,11 +380,9 @@ def calibrate():
     flipx = img.use_flip_x
     flipy = img.use_flip_y
     w, h = img.image.size
-    print(w, h)
     # Get the camera focal length
     cam_focal, cam_pos, cam_rot, coords = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
     cam.lens = cam_focal
-    print(cam_pos)
     cam_obj.location = cam_pos
     cam_obj.rotation_euler = cam_rot
     # Set the render resolution
