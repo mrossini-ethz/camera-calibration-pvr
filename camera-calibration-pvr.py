@@ -362,7 +362,7 @@ def calibrate():
     print(obj.location)
     print("Vertices:", pa, pb, pc, pd)
     # Get the background images
-    bkg_images = bpy.context.area.spaces.active.background_images
+    bkg_images = bpy.context.space_data.background_images
     if len(bkg_images) == 1:
         # If there is only one background image, take that one
         img = bkg_images[0]
@@ -414,8 +414,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # FIXME: check VIEW_3D context
-        return context.active_object is not None
+        return context.active_object is not None and context.space_data.type == "VIEW_3D"
 
     def execute(self, context):
         ret = calibrate()
