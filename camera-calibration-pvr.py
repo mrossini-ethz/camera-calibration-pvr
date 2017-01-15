@@ -1,0 +1,429 @@
+# Blender Plugin: Camera Calibration with Perspective Views of Rectangles
+# Copyright (C) 2017  Marco Rossini
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+# This Blender plugin is based on the research paper "Recovery of Intrinsic
+# and Extrinsic Camera Parameters Using Perspective Views of Rectangles" by
+# T. N. Tan, G. D. Sullivan and K. D. Baker, Department of Computer Science,
+# The University of Reading, Berkshire RG6 6AY, UK, Email: T.Tan@reading.ac.uk,
+# from the Proceedings of the British Machine Vision Conference, published by
+# the BMVA Press.
+
+import bpy
+import mathutils
+from math import sqrt, pi, atan2
+
+bl_info = {
+    "name": "Camera Calibration using Perspective Views of Rectangles",
+    "author": "Marco Rossini",
+    "version": (0, 0, 1),
+    "blender": (2, 7, 0),
+    "location": "3D View > Tools Panel > Misc > Camera Calibration",
+    "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
+    "tracker_url": "https://github.com/mrossini-ethz/camera-calibration-pvr/issues",
+    "support": "COMMUNITY",
+    "category": "3D View"
+}
+
+### Polynomials ##################################################################
+
+def make_poly(coeffs):
+    """Make a new polynomial"""
+    return list(coeffs)
+
+def poly_norm(poly):
+    """Normalizes a given polynomial"""
+    f = poly[-1]
+    result = []
+    for coeff in poly:
+        result.append(coeff / f)
+    return result
+
+def poly_sub(a, b):
+    """Subtract the two polynomials"""
+    n = max(len(a), len(b))
+    _a = [0] * n
+    _b = [0] * n
+    for i in range(len(a)):
+        _a[i] = a[i]
+    for i in range(len(b)):
+        _b[i] = b[i]
+    result = []
+    for i in range(n):
+        result.append(_a[i] - _b[i])
+    return result
+
+def poly_scale(poly, factor):
+    """Normalizes a given polynomial"""
+    f = poly[-1]
+    result = []
+    for coeff in poly:
+        result.append(coeff * factor)
+    return result
+
+def poly_reduce(poly):
+    """Removes leading coefficients that are zero"""
+    result = []
+    for i in range(len(poly) - 1, -1, -1):
+        if poly[i] != 0 or len(result) > 0:
+            result.append(poly[i])
+    result.reverse()
+    return result
+
+def poly_derivative(poly):
+    """Calculates the derivative of the polynomial"""
+    result = []
+    for i in range(1, len(poly)):
+        result.append(i * poly[i])
+    return result
+
+def poly_eval(poly, x):
+    """Evaluate the polynomial"""
+    result = 0.0
+    for i in range(len(poly)):
+        result += poly[i] * x ** i
+    return result
+
+def poly_order(poly):
+    """Get the order of the polynomial"""
+    return len(poly) - 1
+
+def poly_coeff(poly, idx):
+    """Get the nth coefficient of the polynomial"""
+    if idx > len(poly) - 1:
+        return 0.0
+    elif idx >= 0:
+        return poly[idx]
+
+def poly_div(a, b):
+    """Calculate the polynom division of a and b"""
+    na = poly_order(a)
+    nb = poly_order(b)
+    result = [0] * (na - nb + 1)
+    print("hello")
+    for n in range(na, nb - 1, -1):
+        f = a[n] / b[-1]
+        result[n - nb] = f
+        print([0] * (n - nb))
+        a = poly_sub(a, [0] * (n - nb) + poly_scale(b, f))
+    return result
+
+### Root Finder ##################################################################
+
+def find_root(f, df, ddf, initial_guess = 0.0, limit = 0.00001, max_iterations = 1000):
+    """Find the root of the function f using Halley's method"""
+    xn_1 = initial_guess
+    i = 0
+    while i < max_iterations:
+        fx = f(xn_1)
+        dfx = df(xn_1)
+        ddfx = ddf(xn_1)
+        xn = xn_1 - 2 * fx * dfx / (2 * dfx ** 2 - fx * ddfx)
+        if abs(xn - xn_1) < limit:
+            return xn
+        xn_1 = xn
+        i += 1
+    return None
+
+def find_poly_root(poly, initial_guess = 0.0, limit = 0.00001, max_iterations = 1000):
+    """Find a root of the given polynomial"""
+    # Calculate the polynomial derivatives
+    dpoly = poly_derivative(poly)
+    ddpoly = poly_derivative(dpoly)
+    # Closures !!!
+    f = lambda x: poly_eval(poly, x)
+    df = lambda x: poly_eval(dpoly, x)
+    ddf = lambda x: poly_eval(ddpoly, x)
+    # Call the generic root finder
+    return find_root(f, df, ddf, initial_guess, limit, max_iterations)
+
+def find_poly_roots(poly, initial_guess = 0.0, limit = 0.00001, max_iterations = 1000):
+    """Find all roots of the given polynomial"""
+    solutions = []
+    # Find solutions numerically for n > 0, split them off until n = 2
+    for q in range(poly_order(poly) - 2):
+        x = find_poly_root(poly, initial_guess, limit, max_iterations)
+        if not x:
+            break
+        poly = poly_div(poly, make_poly([-x, 1]))
+        solutions.append(x)
+    # Find the rest of the roots analytically
+    if poly_order(poly) == 1:
+        solutions.append(- poly_coeff(poly, 1) / poly_coeff(poly, 0))
+    elif poly_order(poly) == 2:
+        a = poly_coeff(poly, 2)
+        b = poly_coeff(poly, 1)
+        c = poly_coeff(poly, 0)
+        d = b ** 2 - 4 * a * c
+        if d == 0:
+            solutions.append(-b / (2 * a))
+        elif d > 0:
+            solutions.append((- b + sqrt(d)) / (2 * a))
+            solutions.append((- b - sqrt(d)) / (2 * a))
+    return solutions
+
+### Algorithm ####################################################################
+
+def intersect_2d(pa, pb, pc, pd):
+    """Find the intersection point of the lines AB and CD (2 dimensions)"""
+    # FIXME: proper solution of linear system to avoid division by zero
+    d1 = pb - pa
+    d2 = pd - pc
+    r = pc - pa
+    s = (r[0] - r[1] * d1[0] / d1[1]) / (d1[0] *  d2[1] / d1[1] - d2[0])
+    return pc + s * d2
+
+def get_vanishing_points(pa, pb, pc, pd):
+    """Get the two vanishing points of the rectangle defined by the corners pb pb pc pd"""
+    return (intersect_2d(pa, pb, pd, pc), intersect_2d(pa, pd, pb, pc))
+
+def get_camera_plane_vector(p, scale, focal_length = 1.0):
+    """Convert a 2d point in the camera plane into a 3d vector from the camera onto the camera plane"""
+    # field_of_view = 2 * atan(sensor_size / 2 * focal_length), assume sensor_size = 32
+    s = (16.0 / focal_length) / (scale / 2.0)
+    print((p[0] * s, p[1] * s, -1.0))
+    return mathutils.Vector((p[0] * s, p[1] * s, -1.0))
+
+def calculate_focal_length(pa, pb, pc, pd, scale):
+    """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
+    pm, pn = get_vanishing_points(pa, pb, pc, pd)
+    # Calculate the vectors from camera to the camera plane where the vanishing points are located
+    vm = get_camera_plane_vector(pm, scale)
+    vn = get_camera_plane_vector(pn, scale)
+    # Calculate the focal length
+    return sqrt(- vm.dot(vn))
+
+def get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd):
+    """Equation A (see paper)"""
+    d4 = qac * qbd ** 2 - qad * qbc * qbd
+    d3 = qab * qad * qbc + qad ** 2 * qbc * qbd + qad ** 2 * qcd + qbc * qbd - 2 * qab * qac * qbd - qab * qad * qbd * qcd - qac * qad * qbd ** 2
+    d2 = qab ** 2 * qac + qab ** 2 * qad * qcd + 3 * qab * qac * qad * qbd + qab * qbd * qcd - qab * qad ** 2 * qbc - qab * qbc - qac * qad ** 2 - qad * qbc * qbd - 2 * qad * qcd
+    d1 = qab * qad * qbc + 2 * qac * qad + qcd - 2 * qab ** 2 * qac * qad - qab ** 2 * qcd - qab * qac * qbd
+    d0 = qab ** 2 * qac - qac
+    return make_poly([d0, d1, d2, d3, d4])
+
+def get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd):
+    """Equation B (see paper)"""
+    d4 = qbd - qbd * qcd ** 2
+    d3 = qab * qcd ** 2 + qac * qbd * qcd + 2 * qad * qbd * qcd ** 2 - qab - 2 * qad * qbd - qad * qbc * qcd
+    d2 = 2 * qab * qad + qac * qad * qbc + qad ** 2 * qbc * qcd + qad **2 * qbd + qbc * qcd - qab * qac * qcd - qab * qad * qcd ** 2 - 3 * qac * qad * qbd * qcd - qbd * qcd ** 2
+    d1 = qab * qac * qad * qcd + qac ** 2 * qad * qbd + 2 * qac * qbd * qcd - qab * qad ** 2 - qac * qad ** 2 * qbc - qac * qbc - qad * qbc * qcd
+    d0 = qac * qad * qbc - qac ** 2 * qbd
+    return make_poly([d0, d1, d2, d3, d4])
+
+def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
+    """Calculate the vectors from camera to the camera plane where the rectangle corners are located"""
+    va = get_camera_plane_vector(pa, scale, focal_length).normalized()
+    vb = get_camera_plane_vector(pb, scale, focal_length).normalized()
+    vc = get_camera_plane_vector(pc, scale, focal_length).normalized()
+    vd = get_camera_plane_vector(pd, scale, focal_length).normalized()
+    # Calculate dot products
+    qab = va.dot(vb)
+    qac = va.dot(vc)
+    qad = va.dot(vd)
+    qbc = vb.dot(vc)
+    qbd = vb.dot(vd)
+    qcd = vc.dot(vd)
+    # Determine the equation that needs to be solved
+    pa = poly_norm(get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd))
+    pb = poly_norm(get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd))
+    p = poly_reduce(poly_sub(pa, pb))
+    # Solve the equation
+    roots = find_poly_roots(p)
+    # Iterate over all roots
+    for ld in roots:
+        # Calculate the other parameters
+        lb = (qad * ld - 1) / (qbd * ld - qab)
+        lc = (qad * ld - ld ** 2) / (qac - qcd * ld)
+        # Scale the vectors pointing to the corners from the camera plane to 3d space
+        ra = va
+        rb = vb * lb
+        rc = vc * lc
+        rd = vd * ld
+        # Printout for debugging
+        print("ld:", ld)
+        print("Angles:")
+        print((rb - ra).angle(rd - ra) * 180 / pi)
+        print((ra - rb).angle(rc - rb) * 180 / pi)
+        print((rb - rc).angle(rd - rc) * 180 / pi)
+        print((rc - rd).angle(ra - rd) * 180 / pi)
+        print("Result:")
+        # FIXME: find best solution instead of just giving up here
+        return [ra, rb, rc, rd]
+
+def get_transformation(ra, rb, rc, rd):
+    """Average the vectors AD, BC and AB, DC and normalize them"""
+    ex = (rb - ra + rc - rd).normalized()
+    ey = (rd - ra + rc - rb).normalized()
+    # Get the unit vector in z-direction by using the cross product
+    # Normalize, because rx and ry may not be perfectly perpendicular
+    ez = ex.cross(ey).normalized()
+    return [ex, ey, ez, (ra + rb + rc + rd) / 4.0]
+
+def get_rot_angles(ex, ey, ez):
+    """Get the x- and y-rotation from the ez unit vector"""
+    rx = atan2(ez[1], ez[2])
+    rx_matrix = mathutils.Euler((rx, 0.0, 0.0), "XYZ")
+    # Rotate the ez vector by the previously found angle
+    ez.rotate(rx_matrix)
+    # Negative value because of right handed rotation
+    ry = - atan2(ez[0], ez[2])
+    # Rotate the ex vector by the previously found angles
+    rxy_matrix = mathutils.Euler((rx, ry, 0.0), "XYZ")
+    ex.rotate(rxy_matrix)
+    # Negative value because of right handed rotation
+    rz = - atan2(ex[1], ex[0])
+    return [rx, ry, rz]
+
+def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
+    # Calculate the focal length of the camera
+    focal = calculate_focal_length(pa, pb, pc, pd, scale)
+    # Calculate the coordinates of the rectangle in 3d
+    coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
+    # Calculate the transformation of the rectangle
+    trafo = get_transformation(coords[0], coords[1], coords[2], coords[3])
+    # Reconstruct the rotation angles of the transformation
+    angles = get_rot_angles(trafo[0], trafo[1], trafo[2])
+    xyz_matrix = mathutils.Euler((angles[0], angles[1], angles[2]), "XYZ")
+    # Reconstruct the camera position
+    cam_pos = -trafo[-1]
+    cam_pos.rotate(xyz_matrix)
+    # Calculate the corners of the rectangle in 3d such that it lies on the xy-plane
+    tr = trafo[-1]
+    ca = coords[0] - tr
+    cb = coords[1] - tr
+    cc = coords[2] - tr
+    cd = coords[3] - tr
+    ca.rotate(xyz_matrix)
+    cb.rotate(xyz_matrix)
+    cc.rotate(xyz_matrix)
+    cd.rotate(xyz_matrix)
+    # Printout for debugging
+    print("Focal length:", focal)
+    print("Camera Rx:", angles[0] * 180 / pi)
+    print("Camera Ry:", angles[1] * 180 / pi)
+    print("Camera Rz:", angles[2] * 180 / pi)
+    print("Camera x:", cam_pos[0])
+    print("Camera y:", cam_pos[1])
+    print("Camera z:", cam_pos[2])
+    print("Rectangle length:", (coords[0] - coords[1]).length)
+    print("Rectangle width:", (coords[0] - coords[3]).length)
+    print("Rectangle A:", ca)
+    print("Rectangle B:", cb)
+    print("Rectangle C:", cc)
+    print("Rectangle D:", cd)
+    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd])
+
+### Operator #####################################################################
+
+def calibrate():
+    # Get the camere of the scene
+    scene = bpy.data.scenes["Scene"]
+    cam_obj = scene.camera
+    cam = bpy.data.cameras[cam_obj.name]
+    # Get the currently selected object
+    obj = bpy.context.object
+    # Check whether a mesh with 4 vertices in one polygon is selected
+    if not obj.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
+        print("error")
+        return 2
+    # Get the vertex coordinates
+    pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.to_2d()
+    pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.to_2d()
+    pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.to_2d()
+    pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.to_2d()
+    # FIXME: apply object transformations
+    print("Vertices:", pa, pb, pc, pd)
+    # Get the background images
+    bkg_images = bpy.context.area.spaces.active.background_images
+    # Get the visible background images with view axis 'top'
+    bkg_images_top = []
+    for img in bkg_images:
+        if img.view_axis == "TOP" and img.show_background_image:
+            bkg_images_top.append(img)
+    # Check the number of images
+    if len(bkg_images_top) != 1:
+        return 3
+    # Get the background image properties
+    img = bkg_images_top[0]
+    offx = img.offset_x
+    offy = img.offset_y
+    rot = img.rotation
+    scale = img.size
+    flipx = img.use_flip_x
+    flipy = img.use_flip_y
+    w, h = img.image.size
+    print(w, h)
+    # Get the camera focal length
+    cam_focal, cam_pos, cam_rot, coords = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
+    cam.lens = cam_focal
+    print(cam_pos)
+    cam_obj.location = cam_pos
+    cam_obj.rotation_euler = cam_rot
+    # Set the render resolution
+    scene.render.resolution_x = w
+    scene.render.resolution_y = h
+    # Add the rectangle to the scene
+    bpy.ops.mesh.primitive_plane_add()
+    rect = bpy.context.object
+    rect.name = "CalRect"
+    for i in range(4):
+        rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i]
+    bpy.ops.view3d.viewnumpad(type="CAMERA")
+    return True
+
+class CameraCalibrationOperator(bpy.types.Operator):
+    """Calibrates the active camera"""
+    bl_idname = "camera.camera_calibration"
+    bl_label = "Camera Calibration"
+
+    @classmethod
+    def poll(cls, context):
+        # FIXME: check VIEW_3D context
+        return context.active_object is not None
+
+    def execute(self, context):
+        ret = calibrate()
+        if ret == 2:
+            self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
+        elif ret == 3:
+            self.report({'ERROR'}, "Exactly 1 visible background image required with view axis 'Top'.")
+        return {'FINISHED'}
+
+### Panel ########################################################################
+
+class CameraCalibrationPanel(bpy.types.Panel):
+    """Creates a Panel in the scene context of the properties editor"""
+    bl_label = "Camera Calibration"
+    bl_idname = "VIEW_3D_camera_calibration"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("camera.camera_calibration")
+
+### Register #####################################################################
+
+def register():
+    bpy.utils.register_class(CameraCalibrationPanel)
+    bpy.utils.register_class(CameraCalibrationOperator)
+
+def unregister():
+    bpy.utils.unregister_class(CameraCalibrationPanel)
+    bpy.utils.unregister_class(CameraCalibrationOperator)
+
+if __name__ == "__main__":
+    register()
