@@ -363,16 +363,26 @@ def calibrate():
     print("Vertices:", pa, pb, pc, pd)
     # Get the background images
     bkg_images = bpy.context.area.spaces.active.background_images
-    # Get the visible background images with view axis 'top'
-    bkg_images_top = []
-    for img in bkg_images:
-        if img.view_axis == "TOP" and img.show_background_image:
-            bkg_images_top.append(img)
-    # Check the number of images
-    if len(bkg_images_top) != 1:
-        return 3
-    # Get the background image properties
-    img = bkg_images_top[0]
+    if len(bkg_images) == 1:
+        # If there is only one background image, take that one
+        img = bkg_images[0]
+    else:
+        # Get the visible background images with view axis 'top'
+        bkg_images_top = []
+        for img in bkg_images:
+            if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
+                bkg_images_top.append(img)
+        # Check the number of images
+        if len(bkg_images_top) != 1:
+            # Check only the TOP images
+            bkg_images_top = []
+            for img in bkg_images:
+                if img.view_axis == "TOP" and img.show_background_image:
+                    bkg_images_top.append(img)
+            if len(bkg_images_top) != 1:
+                return 3
+        # Get the background image properties
+        img = bkg_images_top[0]
     offx = img.offset_x
     offy = img.offset_y
     rot = img.rotation
@@ -412,7 +422,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
         if ret == 2:
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
         elif ret == 3:
-            self.report({'ERROR'}, "Exactly 1 visible background image required with view axis 'Top'.")
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
         return {'FINISHED'}
 
 ### Panel ########################################################################
