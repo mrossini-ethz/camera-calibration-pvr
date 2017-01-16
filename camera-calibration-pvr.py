@@ -200,7 +200,7 @@ def calculate_focal_length(pa, pb, pc, pd, scale):
     vm = get_camera_plane_vector(pm, scale)
     vn = get_camera_plane_vector(pn, scale)
     # Calculate the focal length
-    return sqrt(- vm.dot(vn))
+    return sqrt(abs(vm.dot(vn)))
 
 def get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd):
     """Equation A (see paper)"""
@@ -390,7 +390,10 @@ def calibrate():
     flipx = img.use_flip_x
     flipy = img.use_flip_y
     w, h = img.image.size
-    # Get the camera focal length
+    # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
+    if h > w:
+        scale = scale / w * h
+    # Perform the actual calibration
     cam_focal, cam_pos, cam_rot, coords = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
     cam.lens = cam_focal
     cam_obj.location = cam_pos
