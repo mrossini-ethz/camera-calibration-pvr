@@ -333,7 +333,7 @@ def calibrate():
     # Get the currently selected object
     obj = bpy.context.object
     # Check whether a mesh with 4 vertices in one polygon is selected
-    if not obj.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
+    if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
         return 2
     # Get the vertex coordinates
     pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
