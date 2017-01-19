@@ -14,14 +14,15 @@ Camera-Calibrabion-PVR is a [Blender](http://www.blender.org) plugin for calibra
 
 ## Usage
 Ensure that your scene has a camera. Then perform the following steps:
+
 1. Change the 3D view into Top Ortho mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
-2. Load a background image for the 3D View by the 3D view properties (on the right side of the 3D view). Ensure that the view axis 'Top' is selected.
+2. Load a background image for the 3D View by the 3D view properties (on the right side of the 3D view, after pressing `N`). Ensure that the image is visible from top view by using either 'All Views' or 'Top'.
 3. Create a new Plane (`Shift-A` -> Mesh -> Plane).
 4. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
 5. Leave Edit mode (`Tab` key).
 6. Enusre that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the Camera Calibration menu. Press Camera Calibration.
 
-This sets the position, the rotation and the focal length of the camera. The view changes automatically to the camera and a new object called CalRect is created that represents the reconstructed rectangle. By design, this rectangle is flat on the x-y-plane.
+This sets the position, the rotation and the focal length of the camera. The view changes automatically to the camera and a new object called CalRect is created that represents the reconstructed rectangle. By design, this rectangle is flat on the x-y-plane. *Warning:* If the background image is set to 'Top' mode, then it will not be visible in camera view. It can safely be changed after the calibration.
 
 To reposition, rotate or scale the generated rectangle, be sure to reposition, rotate or scale the camera along with it.
 
