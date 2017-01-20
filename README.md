@@ -22,7 +22,11 @@ Ensure that your scene has a camera. Then perform the following steps:
 5. Leave Edit mode (`Tab` key).
 6. Enusre that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the Camera Calibration menu. Press Camera Calibration.
 
-This sets the position, the rotation and the focal length of the camera. The view changes automatically to the camera and a new object called CalRect is created that represents the reconstructed rectangle. By design, this rectangle is flat on the x-y-plane. *Warning:* If the background image is set to 'Top' mode, then it will not be visible in camera view. It can safely be changed after the calibration.
+This sets the position, the rotation and the focal length of the camera.
+The view changes automatically to the camera and a new object is created that represents the reconstructed rectangle.
+By design, this rectangle is flat on the x-y-plane.
+*Warning:* If the background image is set to 'Top' mode, then it will not be visible in camera view.
+It can safely be changed after the calibration.
 Also, the original plane may need to be hidden in order to see the newly created plane.
 
 To reposition, rotate or scale the generated rectangle, be sure to reposition, rotate or scale the camera along with it.
