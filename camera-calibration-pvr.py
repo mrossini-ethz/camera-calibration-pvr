@@ -454,7 +454,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
         # Add the rectangle to the scene
         bpy.ops.mesh.primitive_plane_add()
         rect = bpy.context.object
-        rect.name = "CalRect"
+        rect.name = obj.name
         for i in range(4):
             rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
         # Switch to the active camera
