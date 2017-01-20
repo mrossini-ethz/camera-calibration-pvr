@@ -236,12 +236,18 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
     # Determine the equation that needs to be solved
     pa = poly_norm(get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd))
     pb = poly_norm(get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd))
+    print("A:", pa)
+    print("B:", pb)
     p = poly_reduce(poly_sub(pa, pb))
+    print("P:", p)
     # Solve the equation
     roots = find_poly_roots(p)
+    print("Solutions:")
     # Iterate over all roots
+    solutions = []
     for ld in roots:
         # Calculate the other parameters
+        #ld = 1.10201
         lb = (qad * ld - 1) / (qbd * ld - qab)
         lc = (qad * ld - ld ** 2) / (qac - qcd * ld)
         # Scale the vectors pointing to the corners from the camera plane to 3d space
@@ -250,15 +256,35 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
         rc = vc * lc
         rd = vd * ld
         # Printout for debugging
-        print("ld:", ld)
-        print("Angles:")
-        print((rb - ra).angle(rd - ra) * 180 / pi)
-        print((ra - rb).angle(rc - rb) * 180 / pi)
-        print((rb - rc).angle(rd - rc) * 180 / pi)
-        print((rc - rd).angle(ra - rd) * 180 / pi)
-        print("Result:")
-        # FIXME: find best solution instead of just giving up here
-        return [ra, rb, rc, rd]
+        print("x:", ld)
+        # Corner angles
+        angles = [(rb - ra).angle(rd - ra) * 180 / pi, (ra - rb).angle(rc - rb) * 180 / pi, (rb - rc).angle(rd - rc) * 180 / pi, (rc - rd).angle(ra - rd) * 180 / pi]
+        print("Corner angles:", angles)
+        # Rectangle size
+        width = (rb - ra).length
+        height = (rd - ra).length
+        # Flatness (normal distance of point rd to plane defined by ra, rb, rc
+        n = (ra - rb).cross(rc - rb)
+        d = n.dot(ra)
+        dist = abs(n.dot(rd) - d) / n.length
+        print("Flatness:", dist, "=", dist / max(width, height) * 100, "%")
+        # Calculate badness
+        badness = 0.0
+        # FIXME: angle badness and flatness badness should be weighted somehow
+        for ang in angles:
+            badness += abs(ang - 90)
+        badness += abs(dist / max(width, height) * 100)
+        print("Badness:", badness)
+        solutions.append((badness, [ra, rb, rc, rd]))
+    # Chose solution with best score
+    best_badness = solutions[0][0]
+    best_index = 0
+    for i in range(1, len(solutions)):
+        if best_badness > solutions[i][0]:
+            best_index = i
+            best_badness = solutions[i][0]
+    # Return the best solution
+    return solutions[best_index][1]
 
 def get_transformation(ra, rb, rc, rd):
     """Average the vectors AD, BC and AB, DC and normalize them"""
@@ -359,7 +385,6 @@ def calibrate():
     pb = (pb + obj_translation).to_2d()
     pc = (pc + obj_translation).to_2d()
     pd = (pd + obj_translation).to_2d()
-    print(obj.location)
     print("Vertices:", pa, pb, pc, pd)
     # Get the background images
     bkg_images = bpy.context.space_data.background_images
