@@ -29,6 +29,23 @@ To reposition, rotate or scale the generated rectangle, be sure to reposition, r
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Schreenshot Usage")
 
+## Things you should know
+You should be aware of a few things when using this add-on.
+
+### Technical aspects of reference images
+- Images used for camera calibration should have the optical centre in the centre of the image.
+  This means that cropping the image unevenly or using tilt-shift lenses will make the add-on fail to work.
+- Scaling of the image prior to the use for calibration should be done only if the aspect ratio is preserved.
+- Lens distortion effects will negatively affect the result.
+- Higher image resolution is beneficial to the accuracy of the calibration.
+
+### Reference image content
+- Rectangles in the image used for calibration should be distorted by perspective.
+  The more parallel the sides of the rectangles appear in the image, the worse the result.
+  Completely parallel sides will not work.
+- Rectangles in an image are often not perfectly rectangular.
+- Objects in the image may not have perfectly perpendicular sides.
+
 ## License
 Camera Calibration with Perspective Views of Rectangles
 
