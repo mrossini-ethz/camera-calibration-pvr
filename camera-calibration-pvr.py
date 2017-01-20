@@ -371,12 +371,16 @@ class CameraCalibrationOperator(bpy.types.Operator):
         # Get the camere of the scene
         scene = bpy.data.scenes["Scene"]
         cam_obj = scene.camera
+        if not cam_obj:
+            self.report({'ERROR'}, "There is no active camera.")
+            return {'CANCELLED'}
         cam = bpy.data.cameras[cam_obj.data.name]
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether a mesh with 4 vertices in one polygon is selected
         if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
+            return {'CANCELLED'}
         # Get the vertex coordinates
         pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
         pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
@@ -422,6 +426,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
                         bkg_images_top.append(img)
                 if len(bkg_images_top) != 1:
                     self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+                    return {'CANCELLED'}
             # Get the background image properties
             img = bkg_images_top[0]
         offx = img.offset_x
