@@ -371,7 +371,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
         # Get the camere of the scene
         scene = bpy.data.scenes["Scene"]
         cam_obj = scene.camera
-        cam = bpy.data.cameras[cam_obj.name]
+        cam = bpy.data.cameras[cam_obj.data.name]
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether a mesh with 4 vertices in one polygon is selected
