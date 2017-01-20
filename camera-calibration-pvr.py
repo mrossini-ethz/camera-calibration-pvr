@@ -341,115 +341,120 @@ def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
     print("Camera x:", cam_pos[0])
     print("Camera y:", cam_pos[1])
     print("Camera z:", cam_pos[2])
-    print("Rectangle length:", (coords[0] - coords[1]).length)
-    print("Rectangle width:", (coords[0] - coords[3]).length)
+    length = (coords[0] - coords[1]).length
+    width = (coords[0] - coords[3]).length
+    size = max(length, width)
+    print("Rectangle length:", length)
+    print("Rectangle width:", width)
     print("Rectangle A:", ca)
     print("Rectangle B:", cb)
     print("Rectangle C:", cc)
     print("Rectangle D:", cd)
-    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd])
+    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
 
 ### Operator #####################################################################
-
-def calibrate():
-    # Get the camere of the scene
-    scene = bpy.data.scenes["Scene"]
-    cam_obj = scene.camera
-    cam = bpy.data.cameras[cam_obj.name]
-    # Get the currently selected object
-    obj = bpy.context.object
-    # Check whether a mesh with 4 vertices in one polygon is selected
-    if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
-        return 2
-    # Get the vertex coordinates
-    pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
-    pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
-    pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.copy()
-    pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.copy()
-    # Apply the scale
-    obj_scale = obj.scale
-    for i in range(3):
-        pa[i] *= obj_scale[i]
-        pb[i] *= obj_scale[i]
-        pc[i] *= obj_scale[i]
-        pd[i] *= obj_scale[i]
-    # Apply rotation
-    obj_rotation = obj.rotation_euler
-    pa.rotate(obj_rotation)
-    pb.rotate(obj_rotation)
-    pc.rotate(obj_rotation)
-    pd.rotate(obj_rotation)
-    # Apply translation and project to x-y-plane
-    obj_translation = obj.location
-    pa = (pa + obj_translation).to_2d()
-    pb = (pb + obj_translation).to_2d()
-    pc = (pc + obj_translation).to_2d()
-    pd = (pd + obj_translation).to_2d()
-    print("Vertices:", pa, pb, pc, pd)
-    # Get the background images
-    bkg_images = bpy.context.space_data.background_images
-    if len(bkg_images) == 1:
-        # If there is only one background image, take that one
-        img = bkg_images[0]
-    else:
-        # Get the visible background images with view axis 'top'
-        bkg_images_top = []
-        for img in bkg_images:
-            if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
-                bkg_images_top.append(img)
-        # Check the number of images
-        if len(bkg_images_top) != 1:
-            # Check only the TOP images
-            bkg_images_top = []
-            for img in bkg_images:
-                if img.view_axis == "TOP" and img.show_background_image:
-                    bkg_images_top.append(img)
-            if len(bkg_images_top) != 1:
-                return 3
-        # Get the background image properties
-        img = bkg_images_top[0]
-    offx = img.offset_x
-    offy = img.offset_y
-    rot = img.rotation
-    scale = img.size
-    flipx = img.use_flip_x
-    flipy = img.use_flip_y
-    w, h = img.image.size
-    # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
-    if h > w:
-        scale = scale / w * h
-    # Perform the actual calibration
-    cam_focal, cam_pos, cam_rot, coords = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
-    cam.lens = cam_focal
-    cam_obj.location = cam_pos
-    cam_obj.rotation_euler = cam_rot
-    # Set the render resolution
-    scene.render.resolution_x = w
-    scene.render.resolution_y = h
-    # Add the rectangle to the scene
-    bpy.ops.mesh.primitive_plane_add()
-    rect = bpy.context.object
-    rect.name = "CalRect"
-    for i in range(4):
-        rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i]
-    bpy.ops.view3d.viewnumpad(type="CAMERA")
-    return True
 
 class CameraCalibrationOperator(bpy.types.Operator):
     """Calibrates the active camera"""
     bl_idname = "camera.camera_calibration"
     bl_label = "Camera Calibration"
+    bl_options = {"REGISTER", "UNDO"}
+
+    # Properties
+    size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
 
     @classmethod
     def poll(cls, context):
         return context.active_object is not None and context.space_data.type == "VIEW_3D"
 
     def execute(self, context):
-        ret = calibrate()
-        if ret == 2:
+        # Get the camere of the scene
+        scene = bpy.data.scenes["Scene"]
+        cam_obj = scene.camera
+        cam = bpy.data.cameras[cam_obj.name]
+        # Get the currently selected object
+        obj = bpy.context.object
+        # Check whether a mesh with 4 vertices in one polygon is selected
+        if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
-        elif ret == 3:
-            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+        # Get the vertex coordinates
+        pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
+        pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
+        pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.copy()
+        pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.copy()
+        # Apply the scale
+        obj_scale = obj.scale
+        for i in range(3):
+            pa[i] *= obj_scale[i]
+            pb[i] *= obj_scale[i]
+            pc[i] *= obj_scale[i]
+            pd[i] *= obj_scale[i]
+        # Apply rotation
+        obj_rotation = obj.rotation_euler
+        pa.rotate(obj_rotation)
+        pb.rotate(obj_rotation)
+        pc.rotate(obj_rotation)
+        pd.rotate(obj_rotation)
+        # Apply translation and project to x-y-plane
+        obj_translation = obj.location
+        pa = (pa + obj_translation).to_2d()
+        pb = (pb + obj_translation).to_2d()
+        pc = (pc + obj_translation).to_2d()
+        pd = (pd + obj_translation).to_2d()
+        print("Vertices:", pa, pb, pc, pd)
+        # Get the background images
+        bkg_images = bpy.context.space_data.background_images
+        if len(bkg_images) == 1:
+            # If there is only one background image, take that one
+            img = bkg_images[0]
+        else:
+            # Get the visible background images with view axis 'top'
+            bkg_images_top = []
+            for img in bkg_images:
+                if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
+                    bkg_images_top.append(img)
+            # Check the number of images
+            if len(bkg_images_top) != 1:
+                # Check only the TOP images
+                bkg_images_top = []
+                for img in bkg_images:
+                    if img.view_axis == "TOP" and img.show_background_image:
+                        bkg_images_top.append(img)
+                if len(bkg_images_top) != 1:
+                    self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            # Get the background image properties
+            img = bkg_images_top[0]
+        offx = img.offset_x
+        offy = img.offset_y
+        rot = img.rotation
+        scale = img.size
+        flipx = img.use_flip_x
+        flipy = img.use_flip_y
+        w, h = img.image.size
+        # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
+        if h > w:
+            scale = scale / w * h
+        # Perform the actual calibration
+        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
+        if self.size_property > 0:
+            size_factor = self.size_property / rec_size
+        else:
+            size_factor = 1.0 / rec_size
+        cam.lens = cam_focal
+        cam_obj.location = cam_pos * size_factor
+        cam_obj.rotation_euler = cam_rot
+        # Set the render resolution
+        scene.render.resolution_x = w
+        scene.render.resolution_y = h
+        # Add the rectangle to the scene
+        bpy.ops.mesh.primitive_plane_add()
+        rect = bpy.context.object
+        rect.name = "CalRect"
+        for i in range(4):
+            rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
+        # Switch to the active camera
+        if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
+            bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
 ### Panel ########################################################################
