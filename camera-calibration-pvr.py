@@ -458,9 +458,11 @@ class CameraCalibrationOperator(bpy.types.Operator):
             vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
             # Create rotation matrix
             if vert_mode_rotate_x:
-                vert_matrix = mathutils.Matrix().Rotation(pi / 2, 3, "X")
+                vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
+                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "X")
             else:
-                vert_matrix = mathutils.Matrix().Rotation(pi / 2, 3, "Y")
+                vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
+                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "Y")
             # Apply matrix
             cam_obj.location.rotate(vert_matrix)
             cam_obj.rotation_euler.rotate(vert_matrix)
