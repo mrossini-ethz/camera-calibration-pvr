@@ -361,6 +361,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     # Properties
+    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
     size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
 
     @classmethod
@@ -448,6 +449,23 @@ class CameraCalibrationOperator(bpy.types.Operator):
         cam.lens = cam_focal
         cam_obj.location = cam_pos * size_factor
         cam_obj.rotation_euler = cam_rot
+        # Perform rotation to obtain vertical orientation, if necessary.
+        if self.vertical_property:
+            # Get the up direction of the camera
+            up_vec = mathutils.Vector((0.0, 1.0, 0.0))
+            up_vec.rotate(cam_rot)
+            # Decide around which axis to rotate
+            vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
+            # Create rotation matrix
+            if vert_mode_rotate_x:
+                vert_matrix = mathutils.Matrix().Rotation(pi / 2, 3, "X")
+            else:
+                vert_matrix = mathutils.Matrix().Rotation(pi / 2, 3, "Y")
+            # Apply matrix
+            cam_obj.location.rotate(vert_matrix)
+            cam_obj.rotation_euler.rotate(vert_matrix)
+            for i in range(4):
+                coords[i].rotate(vert_matrix)
         # Set the render resolution
         scene.render.resolution_x = w
         scene.render.resolution_y = h

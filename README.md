@@ -29,9 +29,16 @@ By design, this rectangle is flat on the x-y-plane.
 It can safely be changed after the calibration.
 Also, the original plane may need to be hidden in order to see the newly created plane.
 
-To reposition, rotate or scale the generated rectangle, be sure to reposition, rotate or scale the camera along with it.
-
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Schreenshot Usage")
+
+To reposition, rotate and/or scale the generated rectangle, be sure to reposition, rotate and/or scale the camera along with it.
+Also, see the options below.
+
+### Options
+There are options to the camera calibration:
+
+- **Size** determines the size of the reconstructed rectangle.
+- **Vertical orientation** places the reconstructed rectangle in vertical orientation instead of the x-y-Plane.
 
 ## Things you should know
 You should be aware of a few things when using this add-on.
