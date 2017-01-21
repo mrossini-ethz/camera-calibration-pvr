@@ -25,9 +25,12 @@ Ensure that your scene has a camera. Then perform the following steps:
 This sets the position, the rotation and the focal length of the camera.
 The view changes automatically to the camera and a new object is created that represents the reconstructed rectangle.
 By design, this rectangle is flat on the x-y-plane.
-*Warning:* If the background image is set to 'Top' mode, then it will not be visible in camera view.
+The name of the reconstructed rectangle is the one of the original plane, with "_Cal" appended.
+
+**Warning:** If the background image is set to 'Top' mode, then it will not be visible in camera view.
 It can safely be changed after the calibration.
-Also, the original plane may need to be hidden in order to see the newly created plane.
+Also, the original plane may obstruct the view of the reconstructed rectangle.
+It can be hidden or deleted to make the new plane visible.
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Schreenshot Usage")
 

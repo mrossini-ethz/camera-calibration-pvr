@@ -351,6 +351,13 @@ def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
     print("Rectangle C:", cc)
     print("Rectangle D:", cd)
     return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
+### Utilities ####################################################################
+
+def object_name_append(name, suffix):
+    # Check whether the object name is numbered
+    if len(name) > 4 and name[-4] == "." and name[-3:].isdecimal():
+        return name[:-4] + suffix + name[-4:]
+    return name + suffix
 
 ### Operator #####################################################################
 
@@ -474,7 +481,7 @@ class CameraCalibrationOperator(bpy.types.Operator):
         # Add the rectangle to the scene
         bpy.ops.mesh.primitive_plane_add()
         rect = bpy.context.object
-        rect.name = obj.name
+        rect.name = object_name_append(obj.name, "_Cal")
         for i in range(4):
             rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
         # Switch to the active camera
