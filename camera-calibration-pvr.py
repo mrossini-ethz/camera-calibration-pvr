@@ -175,13 +175,19 @@ def find_poly_roots(poly, initial_guess = 0.0, limit = 0.00001, max_iterations =
 ### Algorithm ####################################################################
 
 def intersect_2d(pa, pb, pc, pd):
-    """Find the intersection point of the lines AB and CD (2 dimensions)"""
-    # FIXME: proper solution of linear system to avoid division by zero
-    d1 = pb - pa
-    d2 = pd - pc
-    r = pc - pa
-    s = (r[0] - r[1] * d1[0] / d1[1]) / (d1[0] *  d2[1] / d1[1] - d2[0])
-    return pc + s * d2
+    """Find the intersection point of the lines AB and DC (2 dimensions)"""
+    # Helper vectors
+    ad = pd - pa
+    ab = pb - pa
+    cd = pd - pc
+    # Solve linear system of equations s * ab + t * cd = ad for s using cramer's rule
+    tmp = ab[0] * cd[1] - ab[1] * cd[0]
+    # Check for division by zero (i.e. parallel lines)
+    if tmp == 0:
+        return None
+    s = (ad[0] * cd[1] - ad[1] * cd[0]) / tmp
+    # Return the intersection point
+    return pa + s * ab
 
 def get_vanishing_points(pa, pb, pc, pd):
     """Get the two vanishing points of the rectangle defined by the corners pb pb pc pd"""
