@@ -362,6 +362,31 @@ def is_trapezoid(pa, pb, pc, pd):
     limit = 0.1 * pi / 180
     return abs(w1.angle(w2)) < limit or abs(h1.angle(h2)) < limit
 
+def is_to_the_right(a, b, c):
+    """Checks whether the rotation angle from vector AB to vector BC is between 0 and 180 degrees when rotating to the right. Returns a number."""
+    # Vector from a to b
+    ab = b - a
+    # Vector from b to c
+    bc = c - b
+    # This is a simple dot product with bc and the vector perpendicular to ab (rotated clockwise)
+    return - ab[0] * bc[1] + ab[1] * bc[0]
+
+def is_convex(pa, pb, pc, pd):
+    """Checks whether the given quadrilateral corners form a convex quadrilateral."""
+    # Check, which side each point is on
+    to_the_right = []
+    to_the_right.append(is_to_the_right(pa, pb, pc))
+    to_the_right.append(is_to_the_right(pb, pc, pd))
+    to_the_right.append(is_to_the_right(pc, pd, pa))
+    to_the_right.append(is_to_the_right(pd, pa, pb))
+    # Check whether all are on the same side
+    a = True
+    b = True
+    for ttr in to_the_right:
+        a = a and ttr > 0
+        b = b and ttr < 0
+    return a or b
+
 def object_name_append(name, suffix):
     # Check whether the object name is numbered
     if len(name) > 4 and name[-4] == "." and name[-3:].isdecimal():
@@ -422,6 +447,10 @@ class CameraCalibrationOperator(bpy.types.Operator):
         pb = (pb + obj_translation).to_2d()
         pc = (pc + obj_translation).to_2d()
         pd = (pd + obj_translation).to_2d()
+        # Check whether the polygon is convex (this also checks for degnerate polygons)
+        if not is_convex(pa, pb, pc, pd):
+            self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
+            return {'CANCELLED'}
         # Check for parallel edges
         if is_trapezoid(pa, pb, pc, pd):
             self.report({'ERROR'}, "Edges of the input rectangle must not be parallel.")
