@@ -353,6 +353,15 @@ def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
     return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
 ### Utilities ####################################################################
 
+def is_trapezoid(pa, pb, pc, pd):
+    w1 = pb - pa
+    w2 = pc - pd
+    h1 = pd - pa
+    h2 = pc - pb
+    # Set the limit to 0.1 degrees
+    limit = 0.1 * pi / 180
+    return abs(w1.angle(w2)) < limit or abs(h1.angle(h2)) < limit
+
 def object_name_append(name, suffix):
     # Check whether the object name is numbered
     if len(name) > 4 and name[-4] == "." and name[-3:].isdecimal():
@@ -413,6 +422,10 @@ class CameraCalibrationOperator(bpy.types.Operator):
         pb = (pb + obj_translation).to_2d()
         pc = (pc + obj_translation).to_2d()
         pd = (pd + obj_translation).to_2d()
+        # Check for parallel edges
+        if is_trapezoid(pa, pb, pc, pd):
+            self.report({'ERROR'}, "Edges of the input rectangle must not be parallel.")
+            return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd)
         # Get the background images
         bkg_images = bpy.context.space_data.background_images
