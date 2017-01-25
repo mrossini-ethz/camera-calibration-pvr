@@ -357,7 +357,52 @@ def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
     print("Rectangle C:", cc)
     print("Rectangle D:", cd)
     return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
+
 ### Utilities ####################################################################
+
+# Get the background images
+def get_background_image_data(context):
+    bkg_images = context.space_data.background_images
+    if len(bkg_images) == 1:
+        # If there is only one background image, take that one
+        img = bkg_images[0]
+    else:
+        # Get the visible background images with view axis 'top'
+        bkg_images_top = []
+        for img in bkg_images:
+            if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
+                bkg_images_top.append(img)
+        # Check the number of images
+        if len(bkg_images_top) != 1:
+            # Check only the TOP images
+            bkg_images_top = []
+            for img in bkg_images:
+                if img.view_axis == "TOP" and img.show_background_image:
+                    bkg_images_top.append(img)
+            if len(bkg_images_top) != 1:
+                return None
+        # Get the background image properties
+        img = bkg_images_top[0]
+    offx = img.offset_x
+    offy = img.offset_y
+    rot = img.rotation
+    scale = img.size
+    flipx = img.use_flip_x
+    flipy = img.use_flip_y
+    w, h = img.image.size
+    return (offx, offy, rot, scale, flipx, flipy, w, h)
+
+def vertex_apply_transformation(p, scale, rotation, translation):
+    # Make a copy of the vertex
+    p = p.copy()
+    # Apply the scale
+    for i in range(3):
+        p[i] *= scale[i]
+    # Apply rotation
+    p.rotate(rotation)
+    # Apply translation and project to x-y-plane
+    p = p + translation
+    return p
 
 def is_trapezoid(pa, pb, pc, pd):
     w1 = pb - pa
@@ -429,30 +474,11 @@ class CameraCalibrationOperator(bpy.types.Operator):
         if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
             return {'CANCELLED'}
-        # Get the vertex coordinates
-        pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
-        pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
-        pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.copy()
-        pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.copy()
-        # Apply the scale
-        obj_scale = obj.scale
-        for i in range(3):
-            pa[i] *= obj_scale[i]
-            pb[i] *= obj_scale[i]
-            pc[i] *= obj_scale[i]
-            pd[i] *= obj_scale[i]
-        # Apply rotation
-        obj_rotation = obj.rotation_euler
-        pa.rotate(obj_rotation)
-        pb.rotate(obj_rotation)
-        pc.rotate(obj_rotation)
-        pd.rotate(obj_rotation)
-        # Apply translation and project to x-y-plane
-        obj_translation = obj.location
-        pa = (pa + obj_translation).to_2d()
-        pb = (pb + obj_translation).to_2d()
-        pc = (pc + obj_translation).to_2d()
-        pd = (pd + obj_translation).to_2d()
+        # Get the vertex coordinates and transform them to get the global coordinates, then project to 2d
+        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
@@ -462,36 +488,13 @@ class CameraCalibrationOperator(bpy.types.Operator):
             self.report({'ERROR'}, "Edges of the input rectangle must not be parallel.")
             return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd)
-        # Get the background images
-        bkg_images = bpy.context.space_data.background_images
-        if len(bkg_images) == 1:
-            # If there is only one background image, take that one
-            img = bkg_images[0]
+        # Get the background image data
+        img_data = get_background_image_data(bpy.context)
+        if not img_data:
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            return {'CANCELLED'}
         else:
-            # Get the visible background images with view axis 'top'
-            bkg_images_top = []
-            for img in bkg_images:
-                if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
-                    bkg_images_top.append(img)
-            # Check the number of images
-            if len(bkg_images_top) != 1:
-                # Check only the TOP images
-                bkg_images_top = []
-                for img in bkg_images:
-                    if img.view_axis == "TOP" and img.show_background_image:
-                        bkg_images_top.append(img)
-                if len(bkg_images_top) != 1:
-                    self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
-                    return {'CANCELLED'}
-            # Get the background image properties
-            img = bkg_images_top[0]
-        offx = img.offset_x
-        offy = img.offset_y
-        rot = img.rotation
-        scale = img.size
-        flipx = img.use_flip_x
-        flipy = img.use_flip_y
-        w, h = img.image.size
+            offx, offy, rot, scale, flipx, flipy, w, h = img_data
         # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
         if h > w:
             scale = scale / w * h
