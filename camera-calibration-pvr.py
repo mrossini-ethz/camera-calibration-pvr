@@ -189,9 +189,13 @@ def intersect_2d(pa, pb, pc, pd):
     # Return the intersection point
     return pa + s * ab
 
+def get_vanishing_point(pa, pb, pc, pd):
+    """Get the vanishing point of the lines AB and DC."""
+    return intersect_2d(pa, pb, pc, pd)
+
 def get_vanishing_points(pa, pb, pc, pd):
-    """Get the two vanishing points of the rectangle defined by the corners pb pb pc pd"""
-    return (intersect_2d(pa, pb, pd, pc), intersect_2d(pa, pd, pb, pc))
+    """Get the two vanishing points of the rectangle defined by the corners pa pb pc pd"""
+    return (get_vanishing_point(pa, pb, pd, pc), get_vanishing_point(pa, pd, pb, pc))
 
 def get_camera_plane_vector(p, scale, focal_length = 1.0):
     """Convert a 2d point in the camera plane into a 3d vector from the camera onto the camera plane"""
@@ -199,7 +203,7 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
     s = (16.0 / focal_length) / (scale / 2.0)
     return mathutils.Vector((p[0] * s, p[1] * s, -1.0))
 
-def calculate_focal_length(pa, pb, pc, pd, scale):
+def calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale):
     """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
     pm, pn = get_vanishing_points(pa, pb, pc, pd)
     # Calculate the vectors from camera to the camera plane where the vanishing points are located
@@ -316,9 +320,9 @@ def get_rot_angles(ex, ey, ez):
     rz = - atan2(ex[1], ex[0])
     return [rx, ry, rz]
 
-def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
+def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale):
     # Calculate the focal length of the camera
-    focal = calculate_focal_length(pa, pb, pc, pd, scale)
+    focal = calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale)
     # Calculate the coordinates of the rectangle in 3d
     coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
     # Calculate the transformation of the rectangle
@@ -357,7 +361,127 @@ def calibrate_camera_from_rectangle(pa, pb, pc, pd, scale):
     print("Rectangle C:", cc)
     print("Rectangle D:", cd)
     return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
+
+def calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
+    # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
+    if abs((pb - pa).angle(pc - pd)) < 0.0001:
+        tmp = [pa, pb, pc, pd]
+        pa = tmp[1]
+        pb = tmp[2]
+        pc = tmp[3]
+        pd = tmp[0]
+    # AD and BC are now parallel, AB and CD are assumed to intersect
+    # Get the horizon direction vector
+    vertical = pd - pa + pc - pb
+    horizon = mathutils.Vector((-vertical[1], vertical[0]))
+    print("horizon", horizon)
+    # Determine the vanishing point of the polygon ABCD
+    vanish1 = get_vanishing_point(pa, pb, pc, pd)
+    print("vanish1", vanish1)
+    # Intersect the dangling edge with the horizon to find the second vanishing point
+    vanish2 = get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
+    print("vanish2", vanish2)
+    # Find the rotation point
+    # FIXME: don't use the x-coordinate directly
+    t = -vanish1[0] / horizon[0]
+    optical_centre = vanish1 + t * horizon
+    # Get the camera shift
+    shift = -optical_centre[1] / scale
+    print("shift", shift)
+    # Find the focal length
+    dist = sqrt((vanish1 - optical_centre).length * (vanish2 - optical_centre).length)
+    # Assume sensor size of 32
+    focal = dist / (scale / 2.) * 16
+    print("focal", focal)
+    # Correct for the camera shift
+    pa = pa - optical_centre
+    pb = pb - optical_centre
+    pc = pc - optical_centre
+    pd = pd - optical_centre
+    # Calculate the coordinates of the rectangle in 3d
+    coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
+    # Calculate the transformation of the rectangle
+    trafo = get_transformation(coords[0], coords[1], coords[2], coords[3])
+    # Reconstruct the rotation angles of the transformation
+    angles = get_rot_angles(trafo[0], trafo[1], trafo[2])
+    xyz_matrix = mathutils.Euler((angles[0], angles[1], angles[2]), "XYZ")
+    # Reconstruct the camera position
+    cam_pos = -trafo[-1]
+    cam_pos.rotate(xyz_matrix)
+    # Calculate the corners of the rectangle in 3d such that it lies on the xy-plane
+    tr = trafo[-1]
+    ca = coords[0] - tr
+    cb = coords[1] - tr
+    cc = coords[2] - tr
+    cd = coords[3] - tr
+    ca.rotate(xyz_matrix)
+    cb.rotate(xyz_matrix)
+    cc.rotate(xyz_matrix)
+    cd.rotate(xyz_matrix)
+    # Printout for debugging
+    print("Focal length:", focal)
+    print("Camera Rx:", angles[0] * 180 / pi)
+    print("Camera Ry:", angles[1] * 180 / pi)
+    print("Camera Rz:", angles[2] * 180 / pi)
+    print("Camera x:", cam_pos[0])
+    print("Camera y:", cam_pos[1])
+    print("Camera z:", cam_pos[2])
+    length = (coords[0] - coords[1]).length
+    width = (coords[0] - coords[3]).length
+    size = max(length, width)
+    print("Rectangle length:", length)
+    print("Rectangle width:", width)
+    print("Rectangle A:", ca)
+    print("Rectangle B:", cb)
+    print("Rectangle C:", cc)
+    print("Rectangle D:", cd)
+    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size, shift)
+
 ### Utilities ####################################################################
+
+# Get the background images
+def get_background_image_data(context):
+    bkg_images = context.space_data.background_images
+    if len(bkg_images) == 1:
+        # If there is only one background image, take that one
+        img = bkg_images[0]
+    else:
+        # Get the visible background images with view axis 'top'
+        bkg_images_top = []
+        for img in bkg_images:
+            if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
+                bkg_images_top.append(img)
+        # Check the number of images
+        if len(bkg_images_top) != 1:
+            # Check only the TOP images
+            bkg_images_top = []
+            for img in bkg_images:
+                if img.view_axis == "TOP" and img.show_background_image:
+                    bkg_images_top.append(img)
+            if len(bkg_images_top) != 1:
+                return None
+        # Get the background image properties
+        img = bkg_images_top[0]
+    offx = img.offset_x
+    offy = img.offset_y
+    rot = img.rotation
+    scale = img.size
+    flipx = img.use_flip_x
+    flipy = img.use_flip_y
+    w, h = img.image.size
+    return (offx, offy, rot, scale, flipx, flipy, w, h)
+
+def vertex_apply_transformation(p, scale, rotation, translation):
+    # Make a copy of the vertex
+    p = p.copy()
+    # Apply the scale
+    for i in range(3):
+        p[i] *= scale[i]
+    # Apply rotation
+    p.rotate(rotation)
+    # Apply translation and project to x-y-plane
+    p = p + translation
+    return p
 
 def is_trapezoid(pa, pb, pc, pd):
     w1 = pb - pa
@@ -401,10 +525,10 @@ def object_name_append(name, suffix):
 
 ### Operator #####################################################################
 
-class CameraCalibrationOperator(bpy.types.Operator):
-    """Calibrates the active camera"""
-    bl_idname = "camera.camera_calibration"
-    bl_label = "Camera Calibration"
+class CameraCalibrationNormalOperator(bpy.types.Operator):
+    """Calibrates the active camera using the perspective view of a rectangle"""
+    bl_idname = "camera.camera_calibration_normal_perspective"
+    bl_label = "Normal Perspective"
     bl_options = {"REGISTER", "UNDO"}
 
     # Properties
@@ -429,30 +553,11 @@ class CameraCalibrationOperator(bpy.types.Operator):
         if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
             return {'CANCELLED'}
-        # Get the vertex coordinates
-        pa = obj.data.vertices[obj.data.polygons[0].vertices[0]].co.copy()
-        pb = obj.data.vertices[obj.data.polygons[0].vertices[1]].co.copy()
-        pc = obj.data.vertices[obj.data.polygons[0].vertices[2]].co.copy()
-        pd = obj.data.vertices[obj.data.polygons[0].vertices[3]].co.copy()
-        # Apply the scale
-        obj_scale = obj.scale
-        for i in range(3):
-            pa[i] *= obj_scale[i]
-            pb[i] *= obj_scale[i]
-            pc[i] *= obj_scale[i]
-            pd[i] *= obj_scale[i]
-        # Apply rotation
-        obj_rotation = obj.rotation_euler
-        pa.rotate(obj_rotation)
-        pb.rotate(obj_rotation)
-        pc.rotate(obj_rotation)
-        pd.rotate(obj_rotation)
-        # Apply translation and project to x-y-plane
-        obj_translation = obj.location
-        pa = (pa + obj_translation).to_2d()
-        pb = (pb + obj_translation).to_2d()
-        pc = (pc + obj_translation).to_2d()
-        pd = (pd + obj_translation).to_2d()
+        # Get the vertex coordinates and transform them to get the global coordinates, then project to 2d
+        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
@@ -462,41 +567,18 @@ class CameraCalibrationOperator(bpy.types.Operator):
             self.report({'ERROR'}, "Edges of the input rectangle must not be parallel.")
             return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd)
-        # Get the background images
-        bkg_images = bpy.context.space_data.background_images
-        if len(bkg_images) == 1:
-            # If there is only one background image, take that one
-            img = bkg_images[0]
+        # Get the background image data
+        img_data = get_background_image_data(bpy.context)
+        if not img_data:
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            return {'CANCELLED'}
         else:
-            # Get the visible background images with view axis 'top'
-            bkg_images_top = []
-            for img in bkg_images:
-                if (img.view_axis == "TOP" or img.view_axis == "ALL") and img.show_background_image:
-                    bkg_images_top.append(img)
-            # Check the number of images
-            if len(bkg_images_top) != 1:
-                # Check only the TOP images
-                bkg_images_top = []
-                for img in bkg_images:
-                    if img.view_axis == "TOP" and img.show_background_image:
-                        bkg_images_top.append(img)
-                if len(bkg_images_top) != 1:
-                    self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
-                    return {'CANCELLED'}
-            # Get the background image properties
-            img = bkg_images_top[0]
-        offx = img.offset_x
-        offy = img.offset_y
-        rot = img.rotation
-        scale = img.size
-        flipx = img.use_flip_x
-        flipy = img.use_flip_y
-        w, h = img.image.size
+            offx, offy, rot, scale, flipx, flipy, w, h = img_data
         # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
         if h > w:
             scale = scale / w * h
         # Perform the actual calibration
-        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_from_rectangle(pa, pb, pc, pd, scale)
+        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale)
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
         else:
@@ -537,28 +619,151 @@ class CameraCalibrationOperator(bpy.types.Operator):
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
+### Operator 2 ###################################################################
+
+class CameraCalibrationShiftedOperator(bpy.types.Operator):
+    """Calibrates the active camera using the shifted perspective view of a rectangle"""
+    bl_idname = "camera.camera_calibration_shifted_perspective"
+    bl_label = "Shifted Perspective"
+    bl_options = {"REGISTER", "UNDO"}
+
+    # Properties
+    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
+    size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.space_data.type == "VIEW_3D"
+
+    def execute(self, context):
+        # Get the camere of the scene
+        scene = bpy.data.scenes["Scene"]
+        cam_obj = scene.camera
+        if not cam_obj:
+            self.report({'ERROR'}, "There is no active camera.")
+            return {'CANCELLED'}
+        cam = bpy.data.cameras[cam_obj.data.name]
+        # Get the currently selected object
+        obj = bpy.context.object
+        # Check whether it is a mesh with 5 vertices, 4 in a polygon, 1 dangling at an edge
+        if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 5 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4 or not len(obj.data.edges) == 5:
+            self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon and one dangling vertex.")
+            return {'CANCELLED'}
+        # Get the edge that is not part of the polygon
+        dangling_edge = None
+        for edge in obj.data.edges:
+            if not edge.key in obj.data.polygons[0].edge_keys:
+                dangling_edge = edge
+                break
+        print("Dangling edge:", dangling_edge.key)
+        # Get the index to the attached and dangling vertex
+        if dangling_edge.key[0] in obj.data.polygons[0].vertices:
+            dangling_vertex = dangling_edge.key[1]
+            attached_vertex = dangling_edge.key[0]
+        else:
+            dangling_vertex = dangling_edge.key[0]
+            attached_vertex = dangling_edge.key[1]
+        print("Dangling vertex:", dangling_vertex)
+        print("Attached vertex:", attached_vertex)
+        print(obj.data.polygons[0].edge_keys)
+        # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
+        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pe = vertex_apply_transformation(obj.data.vertices[attached_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pf = vertex_apply_transformation(obj.data.vertices[dangling_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        # Check whether the polygon is convex (this also checks for degnerate polygons)
+        if not is_convex(pa, pb, pc, pd):
+            self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
+            return {'CANCELLED'}
+        # Check for parallel edges
+        # FIXME: this will pass completely rectangular polygons
+        if not is_trapezoid(pa, pb, pc, pd):
+            self.report({'ERROR'}, "Two opposing edges of the input rectangle must be parallel.")
+            return {'CANCELLED'}
+        print("Vertices:", pa, pb, pc, pd, pe, pf)
+        # Get the background image data
+        img_data = get_background_image_data(bpy.context)
+        if not img_data:
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            return {'CANCELLED'}
+        else:
+            offx, offy, rot, scale, flipx, flipy, w, h = img_data
+        # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
+        if h > w:
+            scale = scale / w * h
+        # Perform the actual calibration
+        calibration_data = calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale)
+        cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift = calibration_data
+        if self.size_property > 0:
+            size_factor = self.size_property / rec_size
+        else:
+            size_factor = 1.0 / rec_size
+        cam.lens = cam_focal
+        cam.shift_y = camera_shift
+        cam_obj.location = cam_pos * size_factor
+        cam_obj.rotation_euler = cam_rot
+        # Perform rotation to obtain vertical orientation, if necessary.
+        if self.vertical_property:
+            # Get the up direction of the camera
+            up_vec = mathutils.Vector((0.0, 1.0, 0.0))
+            up_vec.rotate(cam_rot)
+            # Decide around which axis to rotate
+            vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
+            # Create rotation matrix
+            if vert_mode_rotate_x:
+                vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
+                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "X")
+            else:
+                vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
+                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "Y")
+            # Apply matrix
+            cam_obj.location.rotate(vert_matrix)
+            cam_obj.rotation_euler.rotate(vert_matrix)
+            for i in range(4):
+                coords[i].rotate(vert_matrix)
+        # Set the render resolution
+        scene.render.resolution_x = w
+        scene.render.resolution_y = h
+        # Add the rectangle to the scene
+        bpy.ops.mesh.primitive_plane_add()
+        rect = bpy.context.object
+        rect.name = object_name_append(obj.name, "_Cal")
+        for i in range(4):
+            rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
+        # Switch to the active camera
+        if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
+            bpy.ops.view3d.viewnumpad(type="CAMERA")
+        return {'FINISHED'}
+
 ### Panel ########################################################################
 
 class CameraCalibrationPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
-    bl_label = "Camera Calibration"
+    bl_label = "Camera Calibration PVR"
     bl_idname = "VIEW_3D_camera_calibration"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
 
     def draw(self, context):
         layout = self.layout
-        layout.operator("camera.camera_calibration")
+        row1 = layout.row()
+        row1.operator("camera.camera_calibration_normal_perspective")
+        row2 = layout.row()
+        row2.operator("camera.camera_calibration_shifted_perspective")
 
 ### Register #####################################################################
 
 def register():
     bpy.utils.register_class(CameraCalibrationPanel)
-    bpy.utils.register_class(CameraCalibrationOperator)
+    bpy.utils.register_class(CameraCalibrationNormalOperator)
+    bpy.utils.register_class(CameraCalibrationShiftedOperator)
 
 def unregister():
     bpy.utils.unregister_class(CameraCalibrationPanel)
-    bpy.utils.unregister_class(CameraCalibrationOperator)
+    bpy.utils.unregister_class(CameraCalibrationNormalOperator)
+    bpy.utils.unregister_class(CameraCalibrationShiftedOperator)
 
 if __name__ == "__main__":
     register()
