@@ -3,7 +3,7 @@
 Camera-Calibrabion-PVR is a [Blender](http://www.blender.org) plugin for calibrating the 3d camera using a single image of a rectangle.
 
 ## Installation
-1. Clone or download the repository into a directory of your convenience.
+1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
 2. Open Blender.
 3. Goto File -> User Preferences -> Addons.
 4. At the bottom of the window, chose Install From File.
