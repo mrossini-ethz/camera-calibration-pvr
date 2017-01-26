@@ -212,6 +212,40 @@ def calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale):
     # Calculate the focal length
     return sqrt(abs(vm.dot(vn)))
 
+def calculate_focal_length_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
+    # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
+    if is_collinear(pb - pa, pc - pd):
+        # rename vertices to make AD and BC parallel
+        tmp = [pa, pb, pc, pd]
+        pa = tmp[1]
+        pb = tmp[2]
+        pc = tmp[3]
+        pd = tmp[0]
+    # Get the horizon direction vector
+    vertical = pd - pa + pc - pb
+    horizon = mathutils.Vector((-vertical[1], vertical[0]))
+    # FIXME: remove debugging printouts in this function
+    print("horizon", horizon)
+    # Determine the vanishing point of the polygon ABCD
+    vanish1 = get_vanishing_point(pa, pb, pc, pd)
+    print("vanish1", vanish1)
+    # Intersect the dangling edge with the horizon to find the second vanishing point
+    vanish2 = get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
+    print("vanish2", vanish2)
+    # Find the rotation point
+    # FIXME: don't use the x-coordinate directly
+    t = -vanish1[0] / horizon[0]
+    optical_centre = vanish1 + t * horizon
+    # Get the camera shift
+    shift = -optical_centre[1] / scale
+    print("shift", shift)
+    # Find the focal length
+    dist = sqrt((vanish1 - optical_centre).length * (vanish2 - optical_centre).length)
+    # Assume sensor size of 32
+    focal = dist / (scale / 2.) * 16
+    print("focal", focal)
+    return (focal, optical_centre, shift)
+
 def get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd):
     """Equation A (see paper)"""
     d4 = qac * qbd ** 2 - qad * qbc * qbd
@@ -320,9 +354,15 @@ def get_rot_angles(ex, ey, ez):
     rz = - atan2(ex[1], ex[0])
     return [rx, ry, rz]
 
-def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale):
-    # Calculate the focal length of the camera
-    focal = calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale)
+def apply_transformation(vertices, translation, rotation):
+    n = len(vertices)
+    result = []
+    for i in range(len(vertices)):
+        result.append(vertices[i] - translation)
+        result[-1].rotate(rotation)
+    return result
+
+def reconstruct_rectangle(pa, pb, pc, pd, scale, focal):
     # Calculate the coordinates of the rectangle in 3d
     coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
     # Calculate the transformation of the rectangle
@@ -330,112 +370,38 @@ def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scal
     # Reconstruct the rotation angles of the transformation
     angles = get_rot_angles(trafo[0], trafo[1], trafo[2])
     xyz_matrix = mathutils.Euler((angles[0], angles[1], angles[2]), "XYZ")
-    # Reconstruct the camera position
-    cam_pos = -trafo[-1]
-    cam_pos.rotate(xyz_matrix)
-    # Calculate the corners of the rectangle in 3d such that it lies on the xy-plane
+    # Reconstruct the camera position and the corners of the rectangle in 3d such that it lies on the xy-plane
     tr = trafo[-1]
-    ca = coords[0] - tr
-    cb = coords[1] - tr
-    cc = coords[2] - tr
-    cd = coords[3] - tr
-    ca.rotate(xyz_matrix)
-    cb.rotate(xyz_matrix)
-    cc.rotate(xyz_matrix)
-    cd.rotate(xyz_matrix)
+    cam_pos = apply_transformation([mathutils.Vector((0.0, 0.0, 0.0))], tr, xyz_matrix)[0]
+    corners = apply_transformation(coords, tr, xyz_matrix)
     # Printout for debugging
     print("Focal length:", focal)
-    print("Camera Rx:", angles[0] * 180 / pi)
-    print("Camera Ry:", angles[1] * 180 / pi)
-    print("Camera Rz:", angles[2] * 180 / pi)
-    print("Camera x:", cam_pos[0])
-    print("Camera y:", cam_pos[1])
-    print("Camera z:", cam_pos[2])
+    print("Camera rotation:", rad2deg(angles[0]), rad2deg(angles[1]), rad2deg(angles[2]))
+    print("Camera position:", cam_pos)
     length = (coords[0] - coords[1]).length
     width = (coords[0] - coords[3]).length
     size = max(length, width)
     print("Rectangle length:", length)
     print("Rectangle width:", width)
-    print("Rectangle A:", ca)
-    print("Rectangle B:", cb)
-    print("Rectangle C:", cc)
-    print("Rectangle D:", cd)
-    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size)
+    print("Rectangle corners:", corners)
+    return (cam_pos, xyz_matrix, corners, size)
+
+def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale):
+    # Calculate the focal length of the camera
+    focal = calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale)
+    # Reconstruct the rectangle using this focal length
+    return (focal,) + reconstruct_rectangle(pa, pb, pc, pd, scale, focal)
 
 def calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
-    # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
-    if is_collinear(pb - pa, pc - pd):
-        # rename vertices to make AD and BC parallel
-        tmp = [pa, pb, pc, pd]
-        pa = tmp[1]
-        pb = tmp[2]
-        pc = tmp[3]
-        pd = tmp[0]
-    # Get the horizon direction vector
-    vertical = pd - pa + pc - pb
-    horizon = mathutils.Vector((-vertical[1], vertical[0]))
-    print("horizon", horizon)
-    # Determine the vanishing point of the polygon ABCD
-    vanish1 = get_vanishing_point(pa, pb, pc, pd)
-    print("vanish1", vanish1)
-    # Intersect the dangling edge with the horizon to find the second vanishing point
-    vanish2 = get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
-    print("vanish2", vanish2)
-    # Find the rotation point
-    # FIXME: don't use the x-coordinate directly
-    t = -vanish1[0] / horizon[0]
-    optical_centre = vanish1 + t * horizon
-    # Get the camera shift
-    shift = -optical_centre[1] / scale
-    print("shift", shift)
-    # Find the focal length
-    dist = sqrt((vanish1 - optical_centre).length * (vanish2 - optical_centre).length)
-    # Assume sensor size of 32
-    focal = dist / (scale / 2.) * 16
-    print("focal", focal)
+    # Get the focal length, the optical centre and the vertical shift of the camera
+    focal, optical_centre, shift = calculate_focal_length_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale)
     # Correct for the camera shift
     pa = pa - optical_centre
     pb = pb - optical_centre
     pc = pc - optical_centre
     pd = pd - optical_centre
-    # Calculate the coordinates of the rectangle in 3d
-    coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
-    # Calculate the transformation of the rectangle
-    trafo = get_transformation(coords[0], coords[1], coords[2], coords[3])
-    # Reconstruct the rotation angles of the transformation
-    angles = get_rot_angles(trafo[0], trafo[1], trafo[2])
-    xyz_matrix = mathutils.Euler((angles[0], angles[1], angles[2]), "XYZ")
-    # Reconstruct the camera position
-    cam_pos = -trafo[-1]
-    cam_pos.rotate(xyz_matrix)
-    # Calculate the corners of the rectangle in 3d such that it lies on the xy-plane
-    tr = trafo[-1]
-    ca = coords[0] - tr
-    cb = coords[1] - tr
-    cc = coords[2] - tr
-    cd = coords[3] - tr
-    ca.rotate(xyz_matrix)
-    cb.rotate(xyz_matrix)
-    cc.rotate(xyz_matrix)
-    cd.rotate(xyz_matrix)
-    # Printout for debugging
-    print("Focal length:", focal)
-    print("Camera Rx:", angles[0] * 180 / pi)
-    print("Camera Ry:", angles[1] * 180 / pi)
-    print("Camera Rz:", angles[2] * 180 / pi)
-    print("Camera x:", cam_pos[0])
-    print("Camera y:", cam_pos[1])
-    print("Camera z:", cam_pos[2])
-    length = (coords[0] - coords[1]).length
-    width = (coords[0] - coords[3]).length
-    size = max(length, width)
-    print("Rectangle length:", length)
-    print("Rectangle width:", width)
-    print("Rectangle A:", ca)
-    print("Rectangle B:", cb)
-    print("Rectangle C:", cc)
-    print("Rectangle D:", cd)
-    return (focal, cam_pos, xyz_matrix, [ca, cb, cc, cd], size, shift)
+    # Reconstruct the rectangle using the focal length and return the results, together with the shift value
+    return (focal,) + reconstruct_rectangle(pa, pb, pc, pd, scale, focal) + (shift,)
 
 ### Utilities ####################################################################
 
@@ -588,6 +554,8 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
         else:
             size_factor = 1.0 / rec_size
         cam.lens = cam_focal
+        cam.shift_x = 0.0
+        cam.shift_y = 0.0
         cam_obj.location = cam_pos * size_factor
         cam_obj.rotation_euler = cam_rot
         # Perform rotation to obtain vertical orientation, if necessary.
@@ -705,6 +673,7 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
         else:
             size_factor = 1.0 / rec_size
         cam.lens = cam_focal
+        cam.shift_x = 0.0
         cam.shift_y = camera_shift
         cam_obj.location = cam_pos * size_factor
         cam_obj.rotation_euler = cam_rot
