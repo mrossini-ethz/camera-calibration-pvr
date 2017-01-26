@@ -462,6 +462,13 @@ def is_trapezoid(pa, pb, pc, pd):
     """Determines whether the polygon with the vertices pa, pb, pc, pd is a trapezoid"""
     return is_collinear(pb - pa, pc - pd) or is_collinear(pd - pa, pc - pb)
 
+def is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
+    """Determines whether the polygon with the vertices pa, pb, pc, pd is a trapezoid"""
+    a = is_collinear(pb - pa, pc - pd)
+    b = is_collinear(pd - pa, pc - pb)
+    # Exclusive OR
+    return a != b
+
 def is_to_the_right(a, b, c):
     """Checks whether the rotation angle from vector AB to vector BC is between 0 and 180 degrees when rotating to the right. Returns a number."""
     # Vector from a to b
@@ -674,8 +681,7 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        # FIXME: this will pass completely rectangular polygons
-        if not is_trapezoid(pa, pb, pc, pd):
+        if not is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
             self.report({'ERROR'}, "Two opposing edges of the input rectangle must be parallel.")
             return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd, pe, pf)
