@@ -500,6 +500,14 @@ def object_name_append(name, suffix):
         return name[:-4] + suffix + name[-4:]
     return name + suffix
 
+def get_or_create_camera(scene):
+    cam_obj = scene.camera
+    if not cam_obj:
+        bpy.ops.object.camera_add()
+        cam_obj = bpy.context.object
+    cam = bpy.data.cameras[cam_obj.data.name]
+    return (cam_obj, cam)
+
 def set_camera_parameters(camera, lens = 35.0, shift_x = 0.0, shift_y = 0.0, sensor_size = 32.0):
     """Sets the intrinsic camera parameters, including default ones (to get reliable results)"""
     camera.lens = lens
@@ -508,6 +516,7 @@ def set_camera_parameters(camera, lens = 35.0, shift_x = 0.0, shift_y = 0.0, sen
     camera.shift_y = shift_y
     camera.sensor_width = sensor_size
     camera.sensor_fit = "AUTO"
+    camera.type = "PERSP"
 
 def set_camera_transformation(camera_obj, translation, rotation):
     """Transforms the camera object according to the given parameters"""
@@ -570,11 +579,6 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
     def execute(self, context):
         # Get the camere of the scene
         scene = bpy.data.scenes["Scene"]
-        cam_obj = scene.camera
-        if not cam_obj:
-            self.report({'ERROR'}, "There is no active camera.")
-            return {'CANCELLED'}
-        cam = bpy.data.cameras[cam_obj.data.name]
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether a mesh with 4 vertices in one polygon is selected
@@ -613,6 +617,7 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
             size_factor = self.size_property / rec_size
         else:
             size_factor = 1.0 / rec_size
+        cam_obj, cam = get_or_create_camera(scene)
         # Set intrinsic camera parameters
         set_camera_parameters(cam, lens = cam_focal)
         # Set extrinsic camera parameters and add a new rectangle
@@ -641,11 +646,6 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
     def execute(self, context):
         # Get the camere of the scene
         scene = bpy.data.scenes["Scene"]
-        cam_obj = scene.camera
-        if not cam_obj:
-            self.report({'ERROR'}, "There is no active camera.")
-            return {'CANCELLED'}
-        cam = bpy.data.cameras[cam_obj.data.name]
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether it is a mesh with 5 vertices, 4 in a polygon, 1 dangling at an edge
@@ -702,6 +702,7 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
             size_factor = self.size_property / rec_size
         else:
             size_factor = 1.0 / rec_size
+        cam_obj, cam = get_or_create_camera(scene)
         # Set intrinsic camera parameters
         set_camera_parameters(cam, lens = cam_focal, shift_y = camera_shift)
         # Set extrinsic camera parameters and add a new rectangle
