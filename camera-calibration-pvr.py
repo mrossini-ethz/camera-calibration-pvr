@@ -268,7 +268,7 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
         # Printout for debugging
         print("x:", ld)
         # Corner angles
-        angles = [(rb - ra).angle(rd - ra) * 180 / pi, (ra - rb).angle(rc - rb) * 180 / pi, (rb - rc).angle(rd - rc) * 180 / pi, (rc - rd).angle(ra - rd) * 180 / pi]
+        angles = [rad2deg((rb - ra).angle(rd - ra)), rad2deg((ra - rb).angle(rc - rb)), rad2deg((rb - rc).angle(rd - rc)), rad2deg((rc - rd).angle(ra - rd))]
         print("Corner angles:", angles)
         # Rectangle size
         width = (rb - ra).length
@@ -364,13 +364,13 @@ def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scal
 
 def calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
     # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
-    if abs((pb - pa).angle(pc - pd)) < 0.0001:
+    if is_collinear(pb - pa, pc - pd):
+        # rename vertices to make AD and BC parallel
         tmp = [pa, pb, pc, pd]
         pa = tmp[1]
         pb = tmp[2]
         pc = tmp[3]
         pd = tmp[0]
-    # AD and BC are now parallel, AB and CD are assumed to intersect
     # Get the horizon direction vector
     vertical = pd - pa + pc - pb
     horizon = mathutils.Vector((-vertical[1], vertical[0]))
@@ -483,14 +483,18 @@ def vertex_apply_transformation(p, scale, rotation, translation):
     p = p + translation
     return p
 
-def is_trapezoid(pa, pb, pc, pd):
-    w1 = pb - pa
-    w2 = pc - pd
-    h1 = pd - pa
-    h2 = pc - pb
-    # Set the limit to 0.1 degrees
+def rad2deg(angle):
+    return angle * 180.0 / pi
+
+def is_collinear(v1, v2):
+    """Determines whether the two given vectors are collinear using a limit of 0.1 degrees"""
     limit = 0.1 * pi / 180
-    return abs(w1.angle(w2)) < limit or abs(h1.angle(h2)) < limit
+    # Test the angle
+    return abs(v1.angle(v2)) < limit
+
+def is_trapezoid(pa, pb, pc, pd):
+    """Determines whether the polygon with the vertices pa, pb, pc, pd is a trapezoid"""
+    return is_collinear(pb - pa, pc - pd) or is_collinear(pd - pa, pc - pb)
 
 def is_to_the_right(a, b, c):
     """Checks whether the rotation angle from vector AB to vector BC is between 0 and 180 degrees when rotating to the right. Returns a number."""
