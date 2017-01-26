@@ -493,6 +493,57 @@ def object_name_append(name, suffix):
         return name[:-4] + suffix + name[-4:]
     return name + suffix
 
+def set_camera_parameters(camera, lens = 35.0, shift_x = 0.0, shift_y = 0.0, sensor_size = 32.0):
+    """Sets the intrinsic camera parameters, including default ones (to get reliable results)"""
+    camera.lens = lens
+    camera.lens_unit = "MILLIMETERS"
+    camera.shift_x = shift_x
+    camera.shift_y = shift_y
+    camera.sensor_width = sensor_size
+    camera.sensor_fit = "AUTO"
+
+def set_camera_transformation(camera_obj, translation, rotation):
+    """Transforms the camera object according to the given parameters"""
+    camera_obj.location = translation
+    camera_obj.rotation_euler = rotation
+
+def get_vertical_mode_matrix(is_vertical, camera_rotation):
+    if is_vertical:
+    # Get the up direction of the camera
+        up_vec = mathutils.Vector((0.0, 1.0, 0.0))
+        up_vec.rotate(camera_rotation)
+        # Decide around which axis to rotate
+        vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
+        # Create rotation matrix
+        if vert_mode_rotate_x:
+            vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
+            return mathutils.Matrix().Rotation(vert_angle, 3, "X")
+        else:
+            vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
+            return mathutils.Matrix().Rotation(vert_angle, 3, "Y")
+    else:
+        return mathutils.Matrix().Identity(3)
+
+def update_scene(camera, cam_pos, cam_rot, is_vertical, scene, img_width, img_height, object_name, coords, size_factor):
+    """Updates the scene by moving the camera and creating a new rectangle"""
+    set_camera_transformation(camera, cam_pos * size_factor, cam_rot)
+    # Get transformation matrix for vertical orientation
+    vert_matrix = get_vertical_mode_matrix(is_vertical, cam_rot)
+    # Apply the transformation matrix for vertical orientation
+    camera.location.rotate(vert_matrix)
+    camera.rotation_euler.rotate(vert_matrix)
+    for i in range(4):
+        coords[i].rotate(vert_matrix)
+    # Set the render resolution
+    scene.render.resolution_x = img_width
+    scene.render.resolution_y = img_height
+    # Add the rectangle to the scene
+    bpy.ops.mesh.primitive_plane_add()
+    rect = bpy.context.object
+    rect.name = object_name_append(object_name, "_Cal")
+    for i in range(4):
+        rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
+
 ### Operator #####################################################################
 
 class CameraCalibrationNormalOperator(bpy.types.Operator):
@@ -547,45 +598,18 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
         # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
         if h > w:
             scale = scale / w * h
+
         # Perform the actual calibration
         cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale)
+
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
         else:
             size_factor = 1.0 / rec_size
-        cam.lens = cam_focal
-        cam.shift_x = 0.0
-        cam.shift_y = 0.0
-        cam_obj.location = cam_pos * size_factor
-        cam_obj.rotation_euler = cam_rot
-        # Perform rotation to obtain vertical orientation, if necessary.
-        if self.vertical_property:
-            # Get the up direction of the camera
-            up_vec = mathutils.Vector((0.0, 1.0, 0.0))
-            up_vec.rotate(cam_rot)
-            # Decide around which axis to rotate
-            vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
-            # Create rotation matrix
-            if vert_mode_rotate_x:
-                vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
-                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "X")
-            else:
-                vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
-                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "Y")
-            # Apply matrix
-            cam_obj.location.rotate(vert_matrix)
-            cam_obj.rotation_euler.rotate(vert_matrix)
-            for i in range(4):
-                coords[i].rotate(vert_matrix)
-        # Set the render resolution
-        scene.render.resolution_x = w
-        scene.render.resolution_y = h
-        # Add the rectangle to the scene
-        bpy.ops.mesh.primitive_plane_add()
-        rect = bpy.context.object
-        rect.name = object_name_append(obj.name, "_Cal")
-        for i in range(4):
-            rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
+        # Set intrinsic camera parameters
+        set_camera_parameters(cam, lens = cam_focal)
+        # Set extrinsic camera parameters and add a new rectangle
+        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
         # Switch to the active camera
         if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
             bpy.ops.view3d.viewnumpad(type="CAMERA")
@@ -672,39 +696,10 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
             size_factor = self.size_property / rec_size
         else:
             size_factor = 1.0 / rec_size
-        cam.lens = cam_focal
-        cam.shift_x = 0.0
-        cam.shift_y = camera_shift
-        cam_obj.location = cam_pos * size_factor
-        cam_obj.rotation_euler = cam_rot
-        # Perform rotation to obtain vertical orientation, if necessary.
-        if self.vertical_property:
-            # Get the up direction of the camera
-            up_vec = mathutils.Vector((0.0, 1.0, 0.0))
-            up_vec.rotate(cam_rot)
-            # Decide around which axis to rotate
-            vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
-            # Create rotation matrix
-            if vert_mode_rotate_x:
-                vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
-                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "X")
-            else:
-                vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
-                vert_matrix = mathutils.Matrix().Rotation(vert_angle, 3, "Y")
-            # Apply matrix
-            cam_obj.location.rotate(vert_matrix)
-            cam_obj.rotation_euler.rotate(vert_matrix)
-            for i in range(4):
-                coords[i].rotate(vert_matrix)
-        # Set the render resolution
-        scene.render.resolution_x = w
-        scene.render.resolution_y = h
-        # Add the rectangle to the scene
-        bpy.ops.mesh.primitive_plane_add()
-        rect = bpy.context.object
-        rect.name = object_name_append(obj.name, "_Cal")
-        for i in range(4):
-            rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
+        # Set intrinsic camera parameters
+        set_camera_parameters(cam, lens = cam_focal, shift_y = camera_shift)
+        # Set extrinsic camera parameters and add a new rectangle
+        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
         # Switch to the active camera
         if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
             bpy.ops.view3d.viewnumpad(type="CAMERA")
