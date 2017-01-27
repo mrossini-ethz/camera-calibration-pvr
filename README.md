@@ -27,7 +27,7 @@ Perform the following steps:
 
 This sets the position, the rotation and the focal length of the camera.
 The view changes automatically to the camera and a new object is created that represents the reconstructed rectangle.
-By design, this rectangle is flat on the x-y-plane.
+By design, this rectangle is parallel to the x-y-plane, at the 3D cursor location.
 (This can be changed in an option, see below.)
 The name of the reconstructed rectangle is the one of the original plane, with "_Cal" appended.
 
@@ -68,7 +68,7 @@ To perform the calibration, go through the following steps:
 There are options to the camera calibration:
 
 - **Size** determines the size of the reconstructed rectangle.
-- **Vertical orientation** places the reconstructed rectangle in vertical orientation instead of on the x-y-Plane.
+- **Vertical orientation** places the reconstructed rectangle in vertical orientation instead of parallel to the x-y-Plane.
 
 ## Things you should know
 You should be aware of a few things when using this add-on.

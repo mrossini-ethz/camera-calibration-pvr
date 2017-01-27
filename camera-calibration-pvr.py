@@ -542,21 +542,26 @@ def get_vertical_mode_matrix(is_vertical, camera_rotation):
 
 def update_scene(camera, cam_pos, cam_rot, is_vertical, scene, img_width, img_height, object_name, coords, size_factor):
     """Updates the scene by moving the camera and creating a new rectangle"""
-    set_camera_transformation(camera, cam_pos * size_factor, cam_rot)
+    # Get the 3D cursor location
+    cursor_pos = bpy.context.space_data.cursor_location
     # Get transformation matrix for vertical orientation
     vert_matrix = get_vertical_mode_matrix(is_vertical, cam_rot)
+    # Set the camera position and rotation
+    cam_rot = cam_rot.copy()
+    cam_rot.rotate(vert_matrix)
+    set_camera_transformation(camera, vert_matrix * cam_pos * size_factor + cursor_pos, cam_rot)
     # Apply the transformation matrix for vertical orientation
-    camera.location.rotate(vert_matrix)
-    camera.rotation_euler.rotate(vert_matrix)
     for i in range(4):
         coords[i].rotate(vert_matrix)
     # Set the render resolution
     scene.render.resolution_x = img_width
     scene.render.resolution_y = img_height
-    # Add the rectangle to the scene
+    # Add the rectangle to the scene (at the 3D cursor location)
     bpy.ops.mesh.primitive_plane_add()
     rect = bpy.context.object
+    # Rename the rectangle
     rect.name = object_name_append(object_name, "_Cal")
+    # Set the correct size (local coordinates)
     for i in range(4):
         rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
 
