@@ -38,6 +38,8 @@ The original plane can be hidden or deleted to make the new plane visible.
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Schreenshot: Usage with Solve Focal")
 
+![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/s.svg "Mesh illustration for Solve Focal")
+
 To reposition, rotate and/or scale the generated rectangle, be sure to reposition, rotate and/or scale the camera along with it.
 Also, see the options below.
 
@@ -62,7 +64,9 @@ To perform the calibration, go through the following steps:
 7. Leave Edit mode (`Tab` key).
 8. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+Y*.
 
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/shifted-perspective.png "Schreenshot: Usage for Solve Focal+Y")
+![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/shifted-perspective.png "Screenshot: Usage for Solve Focal+Y")
+
+![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/v.svg "Mesh illustration for Solve Focal+Y")
 
 ### Calibration of focal length, horizontal and vertical lens shift, position and rotation (Solve Focal+X+Y)
 Lens shift means that the optical centre is not in the centre of the image, but shifted off-centre.
@@ -79,6 +83,8 @@ To perform the calibration, go through the following steps:
 7. Repeat the last step for another vertex.
 8. Leave Edit mode (`Tab` key).
 9. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+X+Y*.
+
+![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/vv.svg "Mesh illustration for Solve Focal+X+Y")
 
 ### Options
 There are options to the camera calibration:
