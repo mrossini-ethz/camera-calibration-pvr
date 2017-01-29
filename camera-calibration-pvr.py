@@ -741,6 +741,91 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
+### Operator FXY PR D ############################################################
+
+class CameraCalibration_FXY_PR_D_Operator(bpy.types.Operator):
+    """Calibrates the active camera using the shifted perspective view of a dual rectangle"""
+    bl_idname = "camera.camera_calibration_fxy_pr_d"
+    bl_label = "Focal/X/Y"
+    bl_options = {"REGISTER", "UNDO"}
+
+    # Properties
+    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
+    size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.space_data.type == "VIEW_3D"
+
+    def execute(self, context):
+        # Get the camere of the scene
+        scene = bpy.data.scenes["Scene"]
+        # Get the currently selected object
+        obj = bpy.context.object
+        # Check whether it is a mesh with 5 vertices, 4 in a polygon, 1 dangling at an edge
+        if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 5 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4 or not len(obj.data.edges) == 5:
+            self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon and one dangling vertex.")
+            return {'CANCELLED'}
+        # Get the edge that is not part of the polygon
+        dangling_edge = None
+        for edge in obj.data.edges:
+            if not edge.key in obj.data.polygons[0].edge_keys:
+                dangling_edge = edge
+                break
+        print("Dangling edge:", dangling_edge.key)
+        # Get the index to the attached and dangling vertex
+        if dangling_edge.key[0] in obj.data.polygons[0].vertices:
+            dangling_vertex = dangling_edge.key[1]
+            attached_vertex = dangling_edge.key[0]
+        else:
+            dangling_vertex = dangling_edge.key[0]
+            attached_vertex = dangling_edge.key[1]
+        print("Dangling vertex:", dangling_vertex)
+        print("Attached vertex:", attached_vertex)
+        print(obj.data.polygons[0].edge_keys)
+        # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
+        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pe = vertex_apply_transformation(obj.data.vertices[attached_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pf = vertex_apply_transformation(obj.data.vertices[dangling_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        # Check whether the polygon is convex (this also checks for degnerate polygons)
+        if not is_convex(pa, pb, pc, pd):
+            self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
+            return {'CANCELLED'}
+        # Check for parallel edges
+        if not is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
+            self.report({'ERROR'}, "Two opposing edges of the input rectangle must be parallel.")
+            return {'CANCELLED'}
+        print("Vertices:", pa, pb, pc, pd, pe, pf)
+        # Get the background image data
+        img_data = get_background_image_data(bpy.context)
+        if not img_data:
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            return {'CANCELLED'}
+        else:
+            offx, offy, rot, scale, flipx, flipy, w, h = img_data
+        # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
+        if h > w:
+            scale = scale / w * h
+        # Perform the actual calibration
+        calibration_data = calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale)
+        cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift = calibration_data
+        if self.size_property > 0:
+            size_factor = self.size_property / rec_size
+        else:
+            size_factor = 1.0 / rec_size
+        cam_obj, cam = get_or_create_camera(scene)
+        # Set intrinsic camera parameters
+        set_camera_parameters(cam, lens = cam_focal, shift_y = camera_shift)
+        # Set extrinsic camera parameters and add a new rectangle
+        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
+        # Switch to the active camera
+        if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
+            bpy.ops.view3d.viewnumpad(type="CAMERA")
+        return {'FINISHED'}
+
 ### Panel ########################################################################
 
 class CameraCalibrationPanel(bpy.types.Panel):
@@ -756,6 +841,8 @@ class CameraCalibrationPanel(bpy.types.Panel):
         row1.operator("camera.camera_calibration_f_pr_s")
         row2 = layout.row()
         row2.operator("camera.camera_calibration_fx_pr_v")
+        row2 = layout.row()
+        row2.operator("camera.camera_calibration_fxy_pr_d")
 
 ### Register #####################################################################
 
@@ -763,11 +850,13 @@ def register():
     bpy.utils.register_class(CameraCalibrationPanel)
     bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
+    bpy.utils.register_class(CameraCalibration_FXY_PR_D_Operator)
 
 def unregister():
     bpy.utils.unregister_class(CameraCalibrationPanel)
     bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
+    bpy.utils.unregister_class(CameraCalibration_FY_PR_D_Operator)
 
 if __name__ == "__main__":
     register()
