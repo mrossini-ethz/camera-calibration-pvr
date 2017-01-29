@@ -172,7 +172,7 @@ def find_poly_roots(poly, initial_guess = 0.0, limit = 0.00001, max_iterations =
             solutions.append((- b - sqrt(d)) / (2 * a))
     return solutions
 
-### Algorithm ####################################################################
+### Algorithm helper functions ###################################################
 
 def intersect_2d(pa, pb, pc, pd):
     """Find the intersection point of the lines AB and DC (2 dimensions)"""
@@ -203,7 +203,27 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
     s = (16.0 / focal_length) / (scale / 2.0)
     return mathutils.Vector((p[0] * s, p[1] * s, -1.0))
 
-def calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale):
+### Algorithms for intrinsic camera parameters ###################################
+
+# The algorithm solves the following intrinsic parameters of the camera:
+# - (F) focal length
+# - (X) lens shift in x
+# - (Y) lens shift in y
+# - (A) pixel aspect ratio
+# There are the following solutions for the extrinsic parameters:
+# - (P) camera position
+# - (R) camera rotation
+# The following inputs are accepted:
+# - (S) single rectangle
+# - (V) single rectangle with dangling vertex
+# - (D) dual rectangle
+# Naming convention for the different solvers (examples):
+# - solve_F_S(): solves for the focal length using a single rectangle as input
+# - solve_F_V(): solves for the focal length and x-shift from a single rectangle with dangling vertex
+# - calibrate_camera_F_PR_S(): calibrates focal length, position and rotation from a single rectangle
+# - calibrate_camera_FX_PR_V(): calibrates focal length, x-shift, position and rotation from a single rectangle with dangling vertex
+
+def solve_F_S(pa, pb, pc, pd, scale):
     """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
     pm, pn = get_vanishing_points(pa, pb, pc, pd)
     # Calculate the vectors from camera to the camera plane where the vanishing points are located
@@ -212,7 +232,7 @@ def calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale):
     # Calculate the focal length
     return sqrt(abs(vm.dot(vn)))
 
-def calculate_focal_length_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
+def solve_F_V(pa, pb, pc, pd, pe, pf, scale):
     # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
     if is_collinear(pb - pa, pc - pd):
         # rename vertices to make AD and BC parallel
@@ -245,6 +265,8 @@ def calculate_focal_length_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scal
     focal = dist / (scale / 2.) * 16
     print("focal", focal)
     return (focal, optical_centre, shift)
+
+### Helper functions for extrinsic camera parameter algorithms ###################
 
 def get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd):
     """Equation A (see paper)"""
@@ -362,6 +384,8 @@ def apply_transformation(vertices, translation, rotation):
         result[-1].rotate(rotation)
     return result
 
+### Algorithms for extrinsic camera parameters ###################################
+
 def reconstruct_rectangle(pa, pb, pc, pd, scale, focal):
     # Calculate the coordinates of the rectangle in 3d
     coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
@@ -386,15 +410,15 @@ def reconstruct_rectangle(pa, pb, pc, pd, scale, focal):
     print("Rectangle corners:", corners)
     return (cam_pos, xyz_matrix, corners, size)
 
-def calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale):
+def calibrate_camera_F_PR_S(pa, pb, pc, pd, scale):
     # Calculate the focal length of the camera
-    focal = calculate_focal_length_with_normal_perspective(pa, pb, pc, pd, scale)
+    focal = solve_F_S(pa, pb, pc, pd, scale)
     # Reconstruct the rectangle using this focal length
     return (focal,) + reconstruct_rectangle(pa, pb, pc, pd, scale, focal)
 
-def calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale):
+def calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale):
     # Get the focal length, the optical centre and the vertical shift of the camera
-    focal, optical_centre, shift = calculate_focal_length_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale)
+    focal, optical_centre, shift = solve_F_V(pa, pb, pc, pd, pe, pf, scale)
     # Correct for the camera shift
     pa = pa - optical_centre
     pb = pb - optical_centre
@@ -565,11 +589,11 @@ def update_scene(camera, cam_pos, cam_rot, is_vertical, scene, img_width, img_he
     for i in range(4):
         rect.data.vertices[rect.data.polygons[0].vertices[i]].co = coords[i] * size_factor
 
-### Operator #####################################################################
+### Operator F PR S ##############################################################
 
-class CameraCalibrationNormalOperator(bpy.types.Operator):
+class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
     """Calibrates the active camera using the perspective view of a rectangle"""
-    bl_idname = "camera.camera_calibration_normal_perspective"
+    bl_idname = "camera.camera_calibration_f_pr_s"
     bl_label = "Normal Perspective"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -616,7 +640,7 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
             scale = scale / w * h
 
         # Perform the actual calibration
-        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_from_rectangle_with_normal_perspective(pa, pb, pc, pd, scale)
+        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_F_PR_S(pa, pb, pc, pd, scale)
 
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
@@ -632,11 +656,11 @@ class CameraCalibrationNormalOperator(bpy.types.Operator):
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
-### Operator 2 ###################################################################
+### Operator FX PR V #############################################################
 
-class CameraCalibrationShiftedOperator(bpy.types.Operator):
+class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
     """Calibrates the active camera using the shifted perspective view of a rectangle"""
-    bl_idname = "camera.camera_calibration_shifted_perspective"
+    bl_idname = "camera.camera_calibration_fx_pr_v"
     bl_label = "Shifted Perspective"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -701,7 +725,7 @@ class CameraCalibrationShiftedOperator(bpy.types.Operator):
         if h > w:
             scale = scale / w * h
         # Perform the actual calibration
-        calibration_data = calibrate_camera_from_straight_rectangle_with_shifted_perspective(pa, pb, pc, pd, pe, pf, scale)
+        calibration_data = calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale)
         cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift = calibration_data
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
@@ -729,21 +753,21 @@ class CameraCalibrationPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row1 = layout.row()
-        row1.operator("camera.camera_calibration_normal_perspective")
+        row1.operator("camera.camera_calibration_f_pr_s")
         row2 = layout.row()
-        row2.operator("camera.camera_calibration_shifted_perspective")
+        row2.operator("camera.camera_calibration_fx_pr_v")
 
 ### Register #####################################################################
 
 def register():
     bpy.utils.register_class(CameraCalibrationPanel)
-    bpy.utils.register_class(CameraCalibrationNormalOperator)
-    bpy.utils.register_class(CameraCalibrationShiftedOperator)
+    bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
+    bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
 
 def unregister():
     bpy.utils.unregister_class(CameraCalibrationPanel)
-    bpy.utils.unregister_class(CameraCalibrationNormalOperator)
-    bpy.utils.unregister_class(CameraCalibrationShiftedOperator)
+    bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
+    bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
 
 if __name__ == "__main__":
     register()
