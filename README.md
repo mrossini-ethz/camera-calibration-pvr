@@ -11,7 +11,7 @@ Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibra
 6. Select the file camera-calibration-pvr.py from the directory into which you cloned the repository.
 7. Activate the checkbox for the plugin that you will now find in the list.
 
-![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Schreenshot Installation")
+![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
 
 ## Usage
 ### Calibration of focal length, position and rotation (Solve Focal)
@@ -36,9 +36,7 @@ It can safely be changed after the calibration.
 Also, the original plane may obstruct the view of the reconstructed rectangle when not in wireframe mode.
 The original plane can be hidden or deleted to make the new plane visible.
 
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Schreenshot: Usage with Solve Focal")
-
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/s.svg "Mesh illustration for Solve Focal")
+![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Screenshot: Usage with Solve Focal")
 
 To reposition, rotate and/or scale the generated rectangle, be sure to reposition, rotate and/or scale the camera along with it.
 Also, see the options below.
@@ -66,8 +64,6 @@ To perform the calibration, go through the following steps:
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/shifted-perspective.png "Screenshot: Usage for Solve Focal+Y")
 
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/v.svg "Mesh illustration for Solve Focal+Y")
-
 ### Calibration of focal length, horizontal and vertical lens shift, position and rotation (Solve Focal+X+Y)
 Lens shift means that the optical centre is not in the centre of the image, but shifted off-centre.
 This can happen when using a tilt-shift lens on a camera or when cropping the image.
@@ -83,8 +79,6 @@ To perform the calibration, go through the following steps:
 7. Repeat the last step for another vertex.
 8. Leave Edit mode (`Tab` key).
 9. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+X+Y*.
-
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/figures/vv.svg "Mesh illustration for Solve Focal+X+Y")
 
 ### Options
 There are options to the camera calibration:
