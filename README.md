@@ -2,6 +2,8 @@
 
 Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibrating the 3D camera using a single image of a rectangle.
 
+![Dragon Demo](wiki/images/dragon-demo.png)
+
 ## Installation
 1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
 2. If you downloaded the zip file, extract it.
