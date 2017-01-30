@@ -4,6 +4,10 @@ Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibra
 
 ![Dragon Demo](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/dragon-demo.png)
 
+Application example of this add-on.
+The focal length, position and rotation of the camera used to take this photograph is determined from a rectangle (grid paper).
+The dragon (Credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the perspective as calculated.
+
 ## Installation
 1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
 2. If you downloaded the zip file, extract it.
@@ -16,6 +20,14 @@ Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibra
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
 
 ## Usage
+
+### Mode overview
+There are three modes that can be used to calibrate the camera:
+
+- *Solve Focal*: Uses the image of a single rectangle to calibrate the camera. This is the mode most often used. However, it does not work if the photograph was taken with a tilt-shift lens and/or was cropped. Furthermore, it can not be used if any two edges of the rectangle appear parallel in the image.
+- *Solve Focal+Y*: This is a special mode often used for architectural images where a tilt-shift lens was used. This mode assumes the lens was set up in such a way that vertical lines appear vertical in the image. Therefore, the reference rectangle is required to have exactly two parallel edges.
+- *Solve Focal+X+Y*: This is the more general mode that allows for shift in both vertical and horizontal direction. This is often useful when the image was cropped. The rectangle used for reference may not have parallel edges.
+
 ### Calibration of focal length, position and rotation (Solve Focal)
 Perform the following steps:
 
