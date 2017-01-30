@@ -172,20 +172,38 @@ def find_poly_roots(poly, initial_guess = 0.0, limit = 0.00001, max_iterations =
             solutions.append((- b - sqrt(d)) / (2 * a))
     return solutions
 
+### Linear Algebra functions #####################################################
+
+def solve_linear_system_2d(a, b, c, d, e, f):
+    """Solves the system of equations a*x + b*y = c, d*x + e*y = e using Gaussian Elimination (for numerical stability)."""
+    # Pivoting (to obtain stability)
+    if abs(d) > abs(a):
+        a, b, c, d, e, f = (d, e, f, a, b, c)
+    # Check for singularity
+    if a == 0:
+        return None
+    tmp = e - d * b / a
+    if tmp == 0:
+        return None
+    # This is final answer of the gaussian elimination
+    y = (f - d * c / a) / tmp
+    x = (c - b * y) / a
+    return (x, y)
+
 ### Algorithm helper functions ###################################################
 
 def intersect_2d(pa, pb, pc, pd):
-    """Find the intersection point of the lines AB and DC (2 dimensions)"""
+    """Find the intersection point of the lines AB and DC (2 dimensions)."""
     # Helper vectors
     ad = pd - pa
     ab = pb - pa
     cd = pd - pc
-    # Solve linear system of equations s * ab + t * cd = ad for s using cramer's rule
-    tmp = ab[0] * cd[1] - ab[1] * cd[0]
-    # Check for division by zero (i.e. parallel lines)
-    if tmp == 0:
+    # Solve linear system of equations s * ab + t * cd = ad
+    tmp = solve_linear_system_2d(ab[0], cd[0], ad[0], ab[1], cd[1], ad[1])
+    # Check for parallel lines
+    if not tmp:
         return None
-    s = (ad[0] * cd[1] - ad[1] * cd[0]) / tmp
+    s, t = tmp
     # Return the intersection point
     return pa + s * ab
 
@@ -283,9 +301,8 @@ def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     A2 = v1[0] - v3[0]
     B2 = v1[1] - v3[1]
     C2 = v1[1] * v2[1] - v2[1] * v3[1] + v1[0] * v2[0] - v2[0] * v3[0]
-    # Solve A1 * x + B1 * y = C1, A2 * x + B2 * y = C2 using Cramer's rule
-    shift_x = (C1 * B2 - C2 * B1) / (A1 * B2 - A2 * B1)
-    shift_y = (A1 * C2 - A2 * C1) / (A1 * B2 - A2 * B1)
+    # Solve A1 * x + B1 * y = C1, A2 * x + B2 * y = C2
+    shift_x, shift_y = solve_linear_system_2d(A1, B1, C1, A2, B2, C2)
     optical_centre = mathutils.Vector((shift_x, shift_y))
     shift_x /= -scale
     shift_y /= -scale
@@ -738,7 +755,7 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
             attached_vertex = dangling_edge.key[1]
         print("Dangling vertex:", dangling_vertex)
         print("Attached vertex:", attached_vertex)
-        print(obj.data.polygons[0].edge_keys)
+        print("Polygon edges:", obj.data.polygons[0].edge_keys)
         # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
         pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
