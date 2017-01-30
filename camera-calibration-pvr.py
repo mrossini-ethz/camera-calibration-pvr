@@ -219,9 +219,11 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
 # - (D) dual rectangle
 # Naming convention for the different solvers (examples):
 # - solve_F_S(): solves for the focal length using a single rectangle as input
-# - solve_F_V(): solves for the focal length and x-shift from a single rectangle with dangling vertex
+# - solve_FY_V(): solves for the focal length and y-shift from a single rectangle with dangling vertex
+# - solve_FXY_VV(): solves for the focal length and x- and y- shift from a single rectangle with two dangling vertices
 # - calibrate_camera_F_PR_S(): calibrates focal length, position and rotation from a single rectangle
 # - calibrate_camera_FX_PR_V(): calibrates focal length, x-shift, position and rotation from a single rectangle with dangling vertex
+# - calibrate_camera_FXY_PR_VV(): calibrates focal length, x- and y-shift, position and rotation from a single rectangle with two dangling vertices
 
 def solve_F_S(pa, pb, pc, pd, scale):
     """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
@@ -232,7 +234,7 @@ def solve_F_S(pa, pb, pc, pd, scale):
     # Calculate the focal length
     return sqrt(abs(vm.dot(vn)))
 
-def solve_F_V(pa, pb, pc, pd, pe, pf, scale):
+def solve_FY_V(pa, pb, pc, pd, pe, pf, scale):
     # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
     if is_collinear(pb - pa, pc - pd):
         # rename vertices to make AD and BC parallel
@@ -266,7 +268,7 @@ def solve_F_V(pa, pb, pc, pd, pe, pf, scale):
     print("focal", focal)
     return (focal, optical_centre, shift)
 
-def solve_FXY_D(vertices, attached_vertices, dangling_vertices, scale):
+def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     # Get the 3 vanishing points
     v1 = get_vanishing_point(vertices[0], vertices[3], vertices[1], vertices[2])
     v2 = get_vanishing_point(attached_vertices[0], dangling_vertices[0], attached_vertices[1], dangling_vertices[1])
@@ -448,7 +450,7 @@ def calibrate_camera_F_PR_S(pa, pb, pc, pd, scale):
 
 def calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale):
     # Get the focal length, the optical centre and the vertical shift of the camera
-    focal, optical_centre, shift = solve_F_V(pa, pb, pc, pd, pe, pf, scale)
+    focal, optical_centre, shift = solve_FY_V(pa, pb, pc, pd, pe, pf, scale)
     # Correct for the camera shift
     pa = pa - optical_centre
     pb = pb - optical_centre
@@ -457,9 +459,9 @@ def calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale):
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
     return (focal,) + reconstruct_rectangle(pa, pb, pc, pd, scale, focal) + (shift,)
 
-def calibrate_camera_FXY_PR_D(vertices, attached_vertices, dangling_vertices, scale):
+def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, scale):
     # Get the focal length, the optical centre and the vertical shift of the camera
-    focal, shift_x, shift_y, optical_centre = solve_FXY_D(vertices, attached_vertices, dangling_vertices, scale)
+    focal, shift_x, shift_y, optical_centre = solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale)
     # Correct for the camera shift
     for i in range(len(vertices)):
         vertices[i] -= optical_centre
@@ -780,11 +782,11 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
-### Operator FXY PR D ############################################################
+### Operator FXY PR VV ############################################################
 
-class CameraCalibration_FXY_PR_D_Operator(bpy.types.Operator):
+class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
     """Calibrates the focal length, lens shift (horizontal and vertical), position and rotation of the active camera."""
-    bl_idname = "camera.camera_calibration_fxy_pr_d"
+    bl_idname = "camera.camera_calibration_fxy_pr_vv"
     bl_label = "Solve Focal+X+Y"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -853,7 +855,7 @@ class CameraCalibration_FXY_PR_D_Operator(bpy.types.Operator):
             scale = scale / w * h
 
         # Perform the actual calibration
-        calibration_data = calibrate_camera_FXY_PR_D(vertices, attached_vertices, dangling_vertices, scale)
+        calibration_data = calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, scale)
         cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift_x, camera_shift_y = calibration_data
 
         if self.size_property > 0:
@@ -886,7 +888,7 @@ class CameraCalibrationPanel(bpy.types.Panel):
         row2 = layout.row()
         row2.operator("camera.camera_calibration_fx_pr_v")
         row2 = layout.row()
-        row2.operator("camera.camera_calibration_fxy_pr_d")
+        row2.operator("camera.camera_calibration_fxy_pr_vv")
 
 ### Register #####################################################################
 
@@ -894,13 +896,13 @@ def register():
     bpy.utils.register_class(CameraCalibrationPanel)
     bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
-    bpy.utils.register_class(CameraCalibration_FXY_PR_D_Operator)
+    bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
 
 def unregister():
     bpy.utils.unregister_class(CameraCalibrationPanel)
     bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
-    bpy.utils.unregister_class(CameraCalibration_FY_PR_D_Operator)
+    bpy.utils.unregister_class(CameraCalibration_FY_PR_VV_Operator)
 
 if __name__ == "__main__":
     register()
