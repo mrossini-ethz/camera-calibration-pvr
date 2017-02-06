@@ -28,7 +28,7 @@ from math import sqrt, pi, atan2
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
     "author": "Marco Rossini",
-    "version": (0, 3, 0),
+    "version": (0, 4, 0),
     "blender": (2, 7, 0),
     "location": "3D View > Tools Panel > Misc > Camera Calibration",
     "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
