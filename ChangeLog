@@ -1,0 +1,35 @@
+ChangeLog
+---------
+
+Version 0.3:
+- Added an algorithm for calculating vertical and horizontal lens shift along
+  with focal length, position and rotation of the camera. Additional
+  information is taken from two dangling vertices in the mesh.
+- Separate button for the new calibration method.
+- Renaming of the calibration methods.
+
+Version 0.2:
+- Added an algorithm for calculating vertical lens shift along with focal
+  length, position and rotation of the camera. Additional information is taken
+  from one dangling vertex in the mesh. The rectangle in the image is required
+  to have one pair of parallel edges.
+- Separate button for the new calibration method.
+- Adding a camera to the scene when none exist.
+- Bugfixes
+
+Version 0.1: First official release. It includes the following features:
+- Algorithm to calculate focal length, position and rotation for the camera
+  used to make a picture of a rectangle.
+- The image used for calibration is taken from the viewport background from Top
+  View.
+- A mesh of four vertices in one polygon is used to determine the coordinates
+  of the rectangle corners.
+- A button in the tool shelf performs the calibration when the mesh is
+  selected.
+- A new rectangle is created during the calibration which represents the
+  undistorted rectangle in the image.
+- The active camera is transformed according to the calculation results.
+- The view automatically changes to camera view.
+- Options for the calibration are:
+  - the size of the reconstructed rectangle
+  - vertical alignment of the reconstructed rectangle

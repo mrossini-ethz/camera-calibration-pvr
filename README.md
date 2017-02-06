@@ -4,7 +4,7 @@ Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibra
 
 ![Dragon Demo](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/dragon-demo.png)
 
-Application example of this add-on.
+Application example for this add-on.
 The focal length, position and rotation of the camera used to take this photograph is determined from a rectangle (grid paper).
 The dragon (Credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the calculated perspective.
 
@@ -104,18 +104,55 @@ There are options to the camera calibration:
 You should be aware of a few things when using this add-on.
 
 ### Technical aspects of reference images
-- *Solve Focal:* Images used for camera calibration should have the optical centre in the centre of the image.
+- **Solve Focal:** Images used for camera calibration should have the optical centre in the centre of the image.
   This means that cropping the image unevenly or using tilt-shift lenses will make the add-on fail to work.
-  *Solve Focal+Y:* See the restrictions above.
+  **Solve Focal+Y:** See the restrictions above.
 - Scaling of the image prior to the use for calibration should be done only if the aspect ratio of the image is preserved.
 - Lens distortion effects will negatively affect the result.
 - Higher image resolution is beneficial to the accuracy of the calibration.
 
 ### Reference image content
 - Rectangles in the image used for calibration should be distorted by perspective.
-  *Solve Focal*: The more parallel the sides of the rectangles appear in the image, the worse the result.
-  Completely parallel sides will not work. (See also *Solve Focal+Y*.)
+  **Solve Focal**, **Solve Focal+X+Y**: The more parallel the sides of the rectangles appear in the image, the worse the result.
+  Completely parallel sides will not work. (See also **Solve Focal+Y**.)
 - Right angles in the real world are often not perfect.
+
+## Changelog
+
+### Version 0.3:
+- Added an algorithm for calculating vertical and horizontal lens shift along
+  with focal length, position and rotation of the camera. Additional
+  information is taken from two dangling vertices in the mesh.
+- Separate button for the new calibration method.
+- Renaming of the calibration methods.
+
+### Version 0.2:
+- Added an algorithm for calculating vertical lens shift along with focal
+  length, position and rotation of the camera. Additional information is taken
+  from one dangling vertex in the mesh. The rectangle in the image is required
+  to have one pair of parallel edges.
+- Separate button for the new calibration method.
+- Adding a camera to the scene when none exist.
+- Bugfixes
+
+### Version 0.1:
+First official release. It includes the following features:
+
+- Algorithm to calculate focal length, position and rotation for the camera
+  used to make a picture of a rectangle.
+- The image used for calibration is taken from the viewport background from Top
+  View.
+- A mesh of four vertices in one polygon is used to determine the coordinates
+  of the rectangle corners.
+- A button in the tool shelf performs the calibration when the mesh is
+  selected.
+- A new rectangle is created during the calibration which represents the
+  undistorted rectangle in the image.
+- The active camera is transformed according to the calculation results.
+- The view automatically changes to camera view.
+- Options for the calibration are:
+    - the size of the reconstructed rectangle
+    - vertical alignment of the reconstructed rectangle
 
 ## License
 Camera Calibration with Perspective Views of Rectangles
