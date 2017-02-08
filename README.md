@@ -1,20 +1,21 @@
 # Camera Calibration using Perspective Views of Rectangles
 
-Camera Calibrabion PVR is a [Blender](http://www.blender.org) plugin for calibrating the 3D camera using a single image of a rectangle.
+Camera Calibrabion PVR is a [Blender](http://www.blender.org) add-on for matching the 3D camera to the perspective seen in a given photograph.
+A view of a rectangle in the image is required for this calibration.
 
 ![Dragon Demo](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/dragon-demo.png)
 
 Application example for this add-on.
 The focal length, position and rotation of the camera used to take this photograph is determined from a rectangle (grid paper).
-The dragon (Credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the calculated perspective.
+The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the calculated perspective.
 
 ## Installation
 1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
 2. If you downloaded the zip file, extract it.
 3. Open Blender.
-4. Goto File -> User Preferences -> Addons.
-5. At the bottom of the window, chose Install From File.
-6. Select the file camera-calibration-pvr.py from the directory into which you cloned the repository.
+4. Go to File -> User Preferences -> Addons.
+5. At the bottom of the window, chose *Install From File*.
+6. Select the file `camera-calibration-pvr.py` from the directory into which you cloned/extracted the repository.
 7. Activate the checkbox for the plugin that you will now find in the list.
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
