@@ -28,9 +28,10 @@ from math import sqrt, pi, atan2
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
     "author": "Marco Rossini",
-    "version": (0, 4, 0),
+    "version": (0, 3, 0),
+    # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
-    "location": "3D View > Tools Panel > Misc > Camera Calibration",
+    "location": "3D View > Tools Panel > Misc > Camera Calibration PVR",
     "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
     "tracker_url": "https://github.com/mrossini-ethz/camera-calibration-pvr/issues",
     "support": "COMMUNITY",
