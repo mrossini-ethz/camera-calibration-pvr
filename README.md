@@ -122,6 +122,7 @@ You should be aware of a few things when using this add-on.
 
 ### Version 0.3.1
 - Scene name is not hardcoded anymore.
+- Changed the use of the `rad2deg()` function to the builtin `math.degrees()`.
 
 ### Version 0.3
 - Added an algorithm for calculating vertical and horizontal lens shift along

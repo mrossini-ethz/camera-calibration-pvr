@@ -23,7 +23,7 @@
 
 import bpy
 import mathutils
-from math import sqrt, pi, atan2
+from math import sqrt, pi, atan2, degrees
 
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
@@ -374,7 +374,7 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
         # Printout for debugging
         print("x:", ld)
         # Corner angles
-        angles = [rad2deg((rb - ra).angle(rd - ra)), rad2deg((ra - rb).angle(rc - rb)), rad2deg((rb - rc).angle(rd - rc)), rad2deg((rc - rd).angle(ra - rd))]
+        angles = [degrees((rb - ra).angle(rd - ra)), degrees((ra - rb).angle(rc - rb)), degrees((rb - rc).angle(rd - rc)), degrees((rc - rd).angle(ra - rd))]
         print("Corner angles:", angles)
         # Rectangle size
         width = (rb - ra).length
@@ -450,7 +450,7 @@ def reconstruct_rectangle(pa, pb, pc, pd, scale, focal):
     corners = apply_transformation(coords, tr, xyz_matrix)
     # Printout for debugging
     print("Focal length:", focal)
-    print("Camera rotation:", rad2deg(angles[0]), rad2deg(angles[1]), rad2deg(angles[2]))
+    print("Camera rotation:", degrees(angles[0]), degrees(angles[1]), degrees(angles[2]))
     print("Camera position:", cam_pos)
     length = (coords[0] - coords[1]).length
     width = (coords[0] - coords[3]).length
@@ -531,9 +531,6 @@ def vertex_apply_transformation(p, scale, rotation, translation):
     # Apply translation and project to x-y-plane
     p = p + translation
     return p
-
-def rad2deg(angle):
-    return angle * 180.0 / pi
 
 def is_collinear(v1, v2):
     """Determines whether the two given vectors are collinear using a limit of 0.1 degrees"""
