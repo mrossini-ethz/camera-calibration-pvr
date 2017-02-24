@@ -1,6 +1,9 @@
 ChangeLog
 ---------
 
+Version 0.3.1
+- Scene name is not hardcoded anymore.
+
 Version 0.3:
 - Added an algorithm for calculating vertical and horizontal lens shift along
   with focal length, position and rotation of the camera. Additional

@@ -120,14 +120,17 @@ You should be aware of a few things when using this add-on.
 
 ## Changelog
 
-### Version 0.3:
+### Version 0.3.1
+- Scene name is not hardcoded anymore.
+
+### Version 0.3
 - Added an algorithm for calculating vertical and horizontal lens shift along
   with focal length, position and rotation of the camera. Additional
   information is taken from two dangling vertices in the mesh.
 - Separate button for the new calibration method.
 - Renaming of the calibration methods.
 
-### Version 0.2:
+### Version 0.2
 - Added an algorithm for calculating vertical lens shift along with focal
   length, position and rotation of the camera. Additional information is taken
   from one dangling vertex in the mesh. The rectangle in the image is required
@@ -136,7 +139,7 @@ You should be aware of a few things when using this add-on.
 - Adding a camera to the scene when none exist.
 - Bugfixes
 
-### Version 0.1:
+### Version 0.1
 First official release. It includes the following features:
 
 - Algorithm to calculate focal length, position and rotation for the camera

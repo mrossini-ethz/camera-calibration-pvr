@@ -28,7 +28,7 @@ from math import sqrt, pi, atan2
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
     "author": "Marco Rossini",
-    "version": (0, 3, 0),
+    "version": (0, 3, 1),
     # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
     "location": "3D View > Tools Panel > Misc > Camera Calibration PVR",
@@ -666,7 +666,7 @@ class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
 
     def execute(self, context):
         # Get the camere of the scene
-        scene = bpy.data.scenes["Scene"]
+        scene = context.scene
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether a mesh with 4 vertices in one polygon is selected
@@ -733,7 +733,7 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
 
     def execute(self, context):
         # Get the camere of the scene
-        scene = bpy.data.scenes["Scene"]
+        scene = context.scene
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether it is a mesh with 5 vertices, 4 in a polygon, 1 dangling at an edge
@@ -818,7 +818,7 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
 
     def execute(self, context):
         # Get the camere of the scene
-        scene = bpy.data.scenes["Scene"]
+        scene = context.scene
         # Get the currently selected object
         obj = bpy.context.object
         # Check whether it is a mesh with 6 vertices, 1 polygon, with 4 vertices and 2 dangling vertices
