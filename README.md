@@ -101,6 +101,15 @@ There are options to the camera calibration:
 - **Size** determines the size of the reconstructed rectangle.
 - **Vertical orientation** places the reconstructed rectangle in vertical orientation instead of parallel to the x-y-Plane.
 
+### Demos
+Here are screen casts that demonstrate the usage.
+
+#### Focal
+![Screen Cast Usage](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/focal.gif "Screen cast: Usage for Solve Focal")
+
+#### Focal+Y
+![Screen Cast Usage](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/focal+y.gif "Screen cast: Usage for Solve Focal+Y")
+
 ## Things you should know
 You should be aware of a few things when using this add-on.
 
