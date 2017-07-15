@@ -907,21 +907,11 @@ class CameraCalibrationPanel(bpy.types.Panel):
 ## Addons Preferences Update Panel
 def update_panel(self, context):
     try:
-        bpy.utils.register_class(CameraCalibrationPanel)
-        bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
-        bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
-        bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
+        bpy.utils.unregister_class(CameraCalibrationPanel)
     except:
         pass
     CameraCalibrationPanel.bl_category = context.user_preferences.addons[__name__].preferences.category
     bpy.utils.register_class(CameraCalibrationPanel)
-    CameraCalibration_F_PR_S_Operator.bl_category = context.user_preferences.addons[__name__].preferences.category
-    bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
-    CameraCalibration_FX_PR_V_Operator.bl_category = context.user_preferences.addons[__name__].preferences.category
-    bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
-    CameraCalibration_FXY_PR_VV_Operator.bl_category = context.user_preferences.addons[__name__].preferences.category
-    bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
-
 
 
 class LayerMAddonPreferences(bpy.types.AddonPreferences):
@@ -932,7 +922,7 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
     category = bpy.props.StringProperty(
             name="Panel Category",
             description="Choose a name for the category of the panel",
-            default="Relations",
+            default="Tools",
             update=update_panel)
 
     def draw(self, context):
@@ -947,8 +937,16 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
 
 def register():
     bpy.utils.register_module(__name__)
+#    bpy.utils.register_class(CameraCalibrationPanel)
+#    bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
+#    bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
+#    bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
+    update_panel(None, bpy.context)
 
 def unregister():
+#    bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
+#    bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
+#    bpy.utils.unregister_class(CameraCalibration_FY_PR_VV_Operator)
     bpy.utils.unregister_module(__name__)
 
 if __name__ == "__main__":
