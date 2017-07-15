@@ -31,7 +31,7 @@ bl_info = {
     "version": (0, 3, 1),
     # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
-    "location": "3D View > Tools Panel > Misc (Or custom panel category) ",
+    "location": "3D View > Tools Panel > Tools (Or custom panel category) ",
     "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
     "wiki_url": "https://github.com/mrossini-ethz/camera-calibration-pvr",
     "tracker_url": "https://github.com/mrossini-ethz/camera-calibration-pvr/issues",
@@ -896,7 +896,7 @@ class CameraCalibrationPanel(bpy.types.Panel):
     bl_idname = "VIEW_3D_camera_calibration"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
-    bl_category = "Misc"
+    bl_category = "Tools"
 
     def draw(self, context):
         layout = self.layout

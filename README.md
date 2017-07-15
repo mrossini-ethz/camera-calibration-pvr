@@ -20,6 +20,9 @@ The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Ds
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
 
+### Blender Artist thread
+![Link] to Blender Artist page (https://blenderartists.org/forum/showthread.php?414359-Add-on-Camera-Calibration-using-Perspective-Views-of-Rectangles&p=3145913&viewfull=1#post3145913 "Link")
+
 ## Usage
 
 ### Mode overview
