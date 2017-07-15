@@ -20,6 +20,7 @@ The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Ds
 5. At the bottom of the window, chose *Install From File*.
 6. Select the file `camera-calibration-pvr.py` from the directory into which you cloned/extracted the repository.
 7. Activate the checkbox for the plugin that you will now find in the list.
+8. From startup the panel is located in the TOOLS panel, you can change this in the preference in the addon panel.
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
 
@@ -41,7 +42,7 @@ Perform the following steps:
 4. Create a new Plane (`Shift-A` -> Mesh -> Plane).
 5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
 6. Leave Edit mode (`Tab` key).
-7. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view), select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal*.
+7. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view), select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal*.
 
 This sets the position, the rotation and the focal length of the camera.
 The view changes automatically to the camera and a new object is created that represents the reconstructed rectangle.
@@ -78,7 +79,7 @@ To perform the calibration, go through the following steps:
 5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
 6. Select one of the vertices and extrude it by pressing `E`. Position it as shown in the image below. The edge must be perpendicular in the image in order to be suitable.
 7. Leave Edit mode (`Tab` key).
-8. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+Y*.
+8. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+Y*.
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/shifted-perspective.png "Screenshot: Usage for Solve Focal+Y")
 
@@ -96,7 +97,7 @@ To perform the calibration, go through the following steps:
 6. Select one of the vertices and extrude it by pressing `E`. Position it along a line that is perpendicular to the rectangle.
 7. Repeat the last step for another vertex.
 8. Leave Edit mode (`Tab` key).
-9. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Misc tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+X+Y*.
+9. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+X+Y*.
 
 ### Options
 There are options to the camera calibration:
