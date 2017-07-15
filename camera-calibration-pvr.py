@@ -33,6 +33,7 @@ bl_info = {
     "blender": (2, 7, 0),
     "location": "3D View > Tools Panel > Misc > Camera Calibration PVR",
     "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
+    "wiki_url": "https://github.com/mrossini-ethz/camera-calibration-pvr",
     "tracker_url": "https://github.com/mrossini-ethz/camera-calibration-pvr/issues",
     "support": "COMMUNITY",
     "category": "3D View"
@@ -895,6 +896,7 @@ class CameraCalibrationPanel(bpy.types.Panel):
     bl_idname = "VIEW_3D_camera_calibration"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
+    bl_category = "Relations"
 
     def draw(self, context):
         layout = self.layout
@@ -905,19 +907,51 @@ class CameraCalibrationPanel(bpy.types.Panel):
         row2 = layout.row()
         row2.operator("camera.camera_calibration_fxy_pr_vv")
 
+## Addons Preferences Update Panel
+def update_panel(self, context):
+    try:
+        bpy.utils.unregister_class(CameraCalibrationPanel)
+    except:
+        pass
+    CameraCalibrationPanel.bl_category = context.user_preferences.addons[__name__].preferences.category
+    bpy.utils.register_class(CameraCalibrationPanel)
+
+
+class LayerMAddonPreferences(bpy.types.AddonPreferences):
+    # this must match the addon name, use '__package__'
+    # when defining this in a submodule of a python package.
+    bl_idname = __name__
+
+    category = bpy.props.StringProperty(
+            name="Tab Category",
+            description="Choose a name for the category of the panel",
+            default="Relations",
+            update=update_panel)
+
+    def draw(self, context):
+
+        layout = self.layout
+        row = layout.row()
+        col = row.column()
+        col.label(text="Tab Category:")
+        col.prop(self, "category", text="")
+
 ### Register #####################################################################
 
 def register():
+    bpy.utils.register_module(__name__)
     bpy.utils.register_class(CameraCalibrationPanel)
     bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
     bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
+    update_panel(None, bpy.context)
 
 def unregister():
-    bpy.utils.unregister_class(CameraCalibrationPanel)
+#    bpy.utils.unregister_class(CameraCalibrationPanel)
     bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
     bpy.utils.unregister_class(CameraCalibration_FY_PR_VV_Operator)
+    bpy.utils.unregister_module(__name__)
 
 if __name__ == "__main__":
     register()
