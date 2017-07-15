@@ -28,7 +28,7 @@ from math import sqrt, pi, atan2, degrees
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
     "author": "Marco Rossini",
-    "version": (0, 3, 1),
+    "version": (0, 4, 0),
     # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
     "location": "3D View > Tools Panel > Tools (Or custom panel category) ",

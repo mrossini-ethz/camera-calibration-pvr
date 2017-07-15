@@ -1,9 +1,11 @@
 ChangeLog
 ---------
 
-Version 0.3.1
-- Scene name is not hardcoded anymore.
-- Changed the use of the rad2deg() function to the builtin math.degrees().
+Version 0.4
+- Improved the add-on preferences
+- Moved the tool location from the "Misc" tab to the "Tools" tab in the Tool
+  shelf. The location can be configured now.
+- The scene name is not hard coded anymore.
 
 Version 0.3:
 - Added an algorithm for calculating vertical and horizontal lens shift along
