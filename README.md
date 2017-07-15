@@ -9,6 +9,9 @@ Application example for this add-on.
 The focal length, position and rotation of the camera used to take this photograph is determined from a rectangle (grid paper).
 The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the calculated perspective.
 
+### Blender Artist thread
+[Link](https://blenderartists.org/forum/showthread.php?414359-Add-on-Camera-Calibration-using-Perspective-Views-of-Rectangles&p=3145913&viewfull=1#post3145913 "Link") to Blender Artist page
+
 ## Installation
 1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
 2. If you downloaded the zip file, extract it.
@@ -19,9 +22,6 @@ The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Ds
 7. Activate the checkbox for the plugin that you will now find in the list.
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
-
-### Blender Artist thread
-[Link](https://blenderartists.org/forum/showthread.php?414359-Add-on-Camera-Calibration-using-Perspective-Views-of-Rectangles&p=3145913&viewfull=1#post3145913 "Link") to Blender Artist page
 
 ## Usage
 
