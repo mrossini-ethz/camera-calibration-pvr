@@ -929,7 +929,6 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
 
         layout = self.layout
         row = layout.row()
-#        col = row.column()
         row.label(text="Panel Category:")
         row.prop(self, "category", text="")
 
@@ -937,16 +936,9 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
 
 def register():
     bpy.utils.register_module(__name__)
-#    bpy.utils.register_class(CameraCalibrationPanel)
-#    bpy.utils.register_class(CameraCalibration_F_PR_S_Operator)
-#    bpy.utils.register_class(CameraCalibration_FX_PR_V_Operator)
-#    bpy.utils.register_class(CameraCalibration_FXY_PR_VV_Operator)
     update_panel(None, bpy.context)
 
 def unregister():
-#    bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
-#    bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
-#    bpy.utils.unregister_class(CameraCalibration_FY_PR_VV_Operator)
     bpy.utils.unregister_module(__name__)
 
 if __name__ == "__main__":
