@@ -31,7 +31,7 @@ bl_info = {
     "version": (0, 3, 1),
     # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
-    "location": "3D View > Tools Panel > Misc > Camera Calibration PVR",
+    "location": "3D View > Tools Panel > Misc (Or custom panel category) ",
     "description": "Calibrates position, rotation and focal length of a camera using a single image of a rectangle.",
     "wiki_url": "https://github.com/mrossini-ethz/camera-calibration-pvr",
     "tracker_url": "https://github.com/mrossini-ethz/camera-calibration-pvr/issues",
@@ -896,7 +896,7 @@ class CameraCalibrationPanel(bpy.types.Panel):
     bl_idname = "VIEW_3D_camera_calibration"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
-    bl_category = "Relations"
+    bl_category = "Misc"
 
     def draw(self, context):
         layout = self.layout
@@ -923,7 +923,7 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
     category = bpy.props.StringProperty(
-            name="Tab Category",
+            name="Panel Category",
             description="Choose a name for the category of the panel",
             default="Relations",
             update=update_panel)
@@ -932,9 +932,9 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
 
         layout = self.layout
         row = layout.row()
-        col = row.column()
-        col.label(text="Tab Category:")
-        col.prop(self, "category", text="")
+#        col = row.column()
+        row.label(text="Panel Category:")
+        row.prop(self, "category", text="")
 
 ### Register #####################################################################
 
@@ -947,7 +947,6 @@ def register():
     update_panel(None, bpy.context)
 
 def unregister():
-#    bpy.utils.unregister_class(CameraCalibrationPanel)
     bpy.utils.unregister_class(CameraCalibration_F_PR_S_Operator)
     bpy.utils.unregister_class(CameraCalibration_FX_PR_V_Operator)
     bpy.utils.unregister_class(CameraCalibration_FY_PR_VV_Operator)
