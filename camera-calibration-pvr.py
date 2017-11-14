@@ -910,7 +910,7 @@ def update_panel(self, context):
         bpy.utils.unregister_class(CameraCalibrationPanel)
     except:
         pass
-    CameraCalibrationPanel.bl_category = context.user_preferences.addons[__name__].preferences.category
+    CameraCalibrationPanel.bl_category = context.user_preferences.addons["camera-calibration-pvr"].preferences.category
     bpy.utils.register_class(CameraCalibrationPanel)
 
 
@@ -934,12 +934,21 @@ class LayerMAddonPreferences(bpy.types.AddonPreferences):
 
 ### Register #####################################################################
 
+classes = (
+    CameraCalibration_F_PR_S_Operator,
+    CameraCalibration_FX_PR_V_Operator,
+    CameraCalibration_FXY_PR_VV_Operator,
+    CameraCalibrationPanel
+)
+
 def register():
-    bpy.utils.register_module(__name__)
+    for cls in classes:
+        bpy.utils.register_class(cls)
     update_panel(None, bpy.context)
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()
