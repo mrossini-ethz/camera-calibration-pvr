@@ -914,10 +914,10 @@ def update_panel(self, context):
     bpy.utils.register_class(CameraCalibrationPanel)
 
 
-class LayerMAddonPreferences(bpy.types.AddonPreferences):
+class CameraCalibrationAddonPreferences(bpy.types.AddonPreferences):
     # this must match the addon name, use '__package__'
     # when defining this in a submodule of a python package.
-    bl_idname = __name__
+    bl_idname = "camera-calibration-pvr"
 
     category = bpy.props.StringProperty(
             name="Panel Category",
@@ -938,7 +938,8 @@ classes = (
     CameraCalibration_F_PR_S_Operator,
     CameraCalibration_FX_PR_V_Operator,
     CameraCalibration_FXY_PR_VV_Operator,
-    CameraCalibrationPanel
+    CameraCalibrationPanel,
+    CameraCalibrationAddonPreferences
 )
 
 def register():
