@@ -24,6 +24,7 @@
 import bpy
 import mathutils
 from math import sqrt, pi, atan2, degrees
+from sys import float_info
 
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
@@ -972,6 +973,21 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         if not is_trapezoid_but_not_rectangle(*vertices):
             self.report({'ERROR'}, "Exactly two opposing edges must be parallel.")
             return {'CANCELLED'}
+        # Check direction of parallel edges (should be horizontal or vertical)
+        ya = abs(vertices[1][1] - vertices[0][1]) < 5 * float_info.epsilon
+        yb = abs(vertices[2][1] - vertices[1][1]) < 5 * float_info.epsilon
+        yc = abs(vertices[3][1] - vertices[2][1]) < 5 * float_info.epsilon
+        yd = abs(vertices[0][1] - vertices[3][1]) < 5 * float_info.epsilon
+        xa = abs(vertices[1][0] - vertices[0][0]) < 5 * float_info.epsilon
+        xb = abs(vertices[2][0] - vertices[1][0]) < 5 * float_info.epsilon
+        xc = abs(vertices[3][0] - vertices[2][0]) < 5 * float_info.epsilon
+        xd = abs(vertices[0][0] - vertices[3][0]) < 5 * float_info.epsilon
+        cond1 = ya == yc == True and yb == yd == False or ya == yc == False and yb == yd == True
+        cond2 = xa == xc == True and xb == xd == False or xa == xc == False and xb == xd == True
+        if cond1 == cond2:
+            self.report({'ERROR'}, "The two parallel edges must be either horizontal or vertical.")
+            return {'CANCELLED'}
+
         # Get the background image data
         img_data = get_background_image_data(bpy.context)
         if not img_data:
