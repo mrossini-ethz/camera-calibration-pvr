@@ -489,20 +489,30 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
     return (focal,) + reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
 
 def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
-    # Trapezoid base and top
-    A = abs(pb[0] - pa[0])
-    C = abs(pc[0] - pd[0])
-    ysign = 1
-    if C > A:
-        A, C = C, A
-        ysign = -1
-
-    # Trapezoid height
-    H = abs(pa[1] - pd[1])
-
     # Rectangle size assumptions
     W = 1
     L = 1
+
+    if not is_collinear(pb - pa, pc - pd):
+        # Re-order the vertices
+        pa, pb, pc, pd = pb, pc, pd, pa
+
+    # Trapezoid base and top
+    A = abs(pb[0] - pa[0])
+    C = abs(pc[0] - pd[0])
+    mA = (pa[0] + pb[0]) / 2
+    mC = (pd[0] + pc[0]) / 2
+    if pa[1] < pc[1]:
+        ysign = 1
+    else:
+        ysign = -1
+    if C > A:
+        A, C = C, A
+        mA, mC = mC, mA
+        ysign = -ysign
+
+    # Trapezoid height
+    H = abs(pa[1] - pd[1])
 
     # Calculate camera y- and z-positions
     y = L / (A / C - 1)
@@ -517,10 +527,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
     focal = A * 32 * y / W / scale
 
     # Calculate camera x-position
-    if ysign > 0:
-        x = -((pa[0] + pb[0]) / 2 - v1[0]) / scale * y * 32 / focal
-    else:
-        x = -((pd[0] + pc[0]) / 2 - v1[0]) / scale * y * 32 / focal
+    x = -(mA - v1[0]) / scale * y * 32 / focal
     print(x, y, z, focal)
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
