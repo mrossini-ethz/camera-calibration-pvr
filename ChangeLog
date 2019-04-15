@@ -1,8 +1,12 @@
 ChangeLog
 ---------
 
+Version 0.5
+- Added 1-point perspective support.
+- Fixed small technical issues that appeared with newer versions of blender.
+
 Version 0.4
-- Improved the add-on preferences
+- Improved the add-on preferences.
 - Moved the tool location from the "Misc" tab to the "Tools" tab in the Tool
   shelf. The location can be configured now.
 - The scene name is not hard coded anymore.

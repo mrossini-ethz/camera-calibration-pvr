@@ -32,6 +32,7 @@ There are three modes that can be used to calibrate the camera:
 - **Solve Focal**: Uses the image of a single rectangle to calibrate the camera. This is the mode most often used. However, it does not work if the photograph was taken with a tilt-shift lens and/or was cropped. Furthermore, it can not be used if any two edges of the rectangle appear parallel in the image.
 - **Solve Focal+Y**: This is a special mode often used for architectural images where a tilt-shift lens was used. This mode assumes the lens was set up in such a way that vertical lines appear vertical in the image. Therefore, the reference rectangle is required to have exactly two parallel edges.
 - **Solve Focal+X+Y**: This is the more general mode that allows for shift in both vertical and horizontal direction. This is often useful when the image was cropped. The rectangle used for reference may not have any parallel edges.
+- **Solve 1-point**: This mode solves the 1-point perspective including camera shift. The reference rectangle size or the focal length of the camera must be known.
 
 ### Calibration of focal length, position and rotation (Solve Focal)
 Perform the following steps:
@@ -133,8 +134,12 @@ You should be aware of a few things when using this add-on.
 
 ## Changelog
 
+### Version 0.5
+- Added 1-point perspective support.
+- Fixed small technical issues that appeared with newer versions of blender.
+
 ### Version 0.4
-- Improved the add-on preferences
+- Improved the add-on preferences.
 - Moved the tool location from the "Misc" tab to the "Tools" tab in the Tool
   shelf. The location can be configured now.
 - The scene name is not hard coded anymore.

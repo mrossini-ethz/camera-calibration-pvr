@@ -29,7 +29,7 @@ from sys import float_info
 bl_info = {
     "name": "Camera Calibration using Perspective Views of Rectangles",
     "author": "Marco Rossini",
-    "version": (0, 4, 0),
+    "version": (0, 5, 0),
     # "warning": "This is an unreleased development version.",
     "blender": (2, 7, 0),
     "location": "3D View > Tools Panel > Tools (Or custom panel category) ",
