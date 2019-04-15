@@ -244,6 +244,7 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
 # - calibrate_camera_F_PR_S(): calibrates focal length, position and rotation from a single rectangle
 # - calibrate_camera_FX_PR_V(): calibrates focal length, x-shift, position and rotation from a single rectangle with dangling vertex
 # - calibrate_camera_FXY_PR_VV(): calibrates focal length, x- and y-shift, position and rotation from a single rectangle with two dangling vertices
+# - calibrate_camera_FXY_P_S(): calibrates focal length, x- and y-shift and position from a single rectangle in 1-point perspective
 
 def solve_F_S(pa, pb, pc, pd, scale):
     """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
@@ -486,6 +487,38 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
         vertices[i] -= optical_centre
     # Reconstruct the rectangle using the focal length and return the results, together with the shift values
     return (focal,) + reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
+
+def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
+    # Trapezoid base and top
+    A = abs(pb[0] - pa[0])
+    C = abs(pc[0] - pd[0])
+    if C > A:
+        A, C = C, A
+
+    # Trapezoid height
+    H = abs(pa[1] - pd[1])
+
+    # Rectangle size assumptions
+    W = 1
+    L = 1
+
+    # Calculate camera y- and z-positions
+    y = L / (A / C - 1)
+    z = H * W / A * (y + L) / L
+
+    # Get the vanishing point
+    v1 = get_vanishing_point(pa, pd, pb, pc)
+    shift_x = -v1[0] / scale
+    shift_y = -v1[1] / scale
+
+    # Get the focal length (assume sensor size 32 mm)
+    focal = A * 32 * y / W / scale
+
+    # Calculate camera x-position
+    x = -((pa[0] + pb[0]) / 2 - v1[0]) / scale * y * 32 / focal
+
+    # Reconstruct the rectangle using the focal length and return the results, together with the shift value
+    return (focal, mathutils.Vector((x, -W / 2 - y, z)), shift_x, shift_y)
 
 ### Utilities ####################################################################
 
@@ -888,6 +921,78 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
+### Operator FXY P S ###############################################################
+
+class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
+    """Calibrates the focal length, lens shift (horizontal and vertical), position and rotation of the active camera."""
+    bl_idname = "camera.camera_calibration_fxy_p_s"
+    bl_label = "Solve 1-point"
+    bl_options = {"REGISTER", "UNDO"}
+
+    # Properties
+    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
+    size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.space_data.type == "VIEW_3D"
+
+    def execute(self, context):
+        # Get the camere of the scene
+        scene = context.scene
+        # Get the currently selected object
+        obj = bpy.context.object
+        # Check whether it is a mesh with 4 vertices in 1 polygon
+        if not obj.data.name in bpy.data.meshes or not len(obj.data.vertices) == 4 or not len(obj.data.polygons) == 1 or not len(obj.data.polygons[0].vertices) == 4:
+            self.report({'ERROR'}, "Selected object must be a mesh with one polygon of 4 vertices with two horizontal edges.")
+            return {'CANCELLED'}
+        # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
+        vertices = []
+        for i in range(4):
+            index = obj.data.polygons[0].vertices[i]
+            vertices.append(vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
+        # Check whether the polygon is convex (this also checks for degnerate polygons)
+        if not is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
+            self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
+            return {'CANCELLED'}
+        # Check for parallel edges
+        if not(is_collinear(vertices[0] - vertices[1], vertices[3] - vertices[2]) or is_collinear(vertices[0] - vertices[3], vertices[1] - vertices[2])):
+            # FIXME one or the other, but not both
+            self.report({'ERROR'}, "Two edges must be parallel.")
+            return {'CANCELLED'}
+        # Get the background image data
+        img_data = get_background_image_data(bpy.context)
+        if not img_data:
+            self.report({'ERROR'}, "Exactly 1 visible background image required in top view.")
+            return {'CANCELLED'}
+        else:
+            offx, offy, rot, scale, flipx, flipy, w, h = img_data
+        # Scale is the horizontal dimension. If in portrait mode, use the vertical dimension.
+        if h > w:
+            scale = scale / w * h
+
+        # Perform the actual calibration
+        rec_size = 1
+        calibration_data = calibrate_camera_FXY_P_S(*vertices, scale)
+        cam_focal, cam_pos, camera_shift_x, camera_shift_y = calibration_data
+
+        cam_rot = mathutils.Euler((pi / 2, 0, 0), "XYZ")
+        coords = (mathutils.Vector((-.5, -.5, 0)), mathutils.Vector((.5, -.5, 0)), mathutils.Vector((.5, .5, 0)), mathutils.Vector((-.5, .5, 0)))
+
+        if self.size_property > 0:
+            size_factor = self.size_property / rec_size
+        else:
+            size_factor = 1.0 / rec_size
+        cam_obj, cam = get_or_create_camera(scene)
+        # Set intrinsic camera parameters
+        set_camera_parameters(cam, lens = cam_focal, shift_x = camera_shift_x, shift_y = camera_shift_y)
+        # Set extrinsic camera parameters and add a new rectangle
+        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
+        # Switch to the active camera
+        #if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
+        #    bpy.ops.view3d.viewnumpad(type="CAMERA")
+        return {'FINISHED'}
+
 ### Panel ########################################################################
 
 class CameraCalibrationPanel(bpy.types.Panel):
@@ -903,6 +1008,7 @@ class CameraCalibrationPanel(bpy.types.Panel):
         layout.operator("camera.camera_calibration_f_pr_s")
         layout.operator("camera.camera_calibration_fx_pr_v")
         layout.operator("camera.camera_calibration_fxy_pr_vv")
+        layout.operator("camera.camera_calibration_fxy_p_s")
 
 ## Addons Preferences Update Panel
 def update_panel(self, context):
@@ -938,6 +1044,7 @@ classes = (
     CameraCalibration_F_PR_S_Operator,
     CameraCalibration_FX_PR_V_Operator,
     CameraCalibration_FXY_PR_VV_Operator,
+    CameraCalibration_FXY_P_S_Operator,
     CameraCalibrationPanel,
     CameraCalibrationAddonPreferences
 )
