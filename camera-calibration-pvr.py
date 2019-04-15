@@ -492,8 +492,10 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
     # Trapezoid base and top
     A = abs(pb[0] - pa[0])
     C = abs(pc[0] - pd[0])
+    ysign = 1
     if C > A:
         A, C = C, A
+        ysign = -1
 
     # Trapezoid height
     H = abs(pa[1] - pd[1])
@@ -504,7 +506,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
 
     # Calculate camera y- and z-positions
     y = L / (A / C - 1)
-    z = H * W / A * (y + L) / L
+    z = ysign * H * W / A * (y + L) / L
 
     # Get the vanishing point
     v1 = get_vanishing_point(pa, pd, pb, pc)
@@ -515,7 +517,11 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
     focal = A * 32 * y / W / scale
 
     # Calculate camera x-position
-    x = -((pa[0] + pb[0]) / 2 - v1[0]) / scale * y * 32 / focal
+    if ysign > 0:
+        x = -((pa[0] + pb[0]) / 2 - v1[0]) / scale * y * 32 / focal
+    else:
+        x = -((pd[0] + pc[0]) / 2 - v1[0]) / scale * y * 32 / focal
+    print(x, y, z, focal)
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
     return (focal, mathutils.Vector((x, -W / 2 - y, z)), shift_x, shift_y)
@@ -956,9 +962,8 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        if not(is_collinear(vertices[0] - vertices[1], vertices[3] - vertices[2]) or is_collinear(vertices[0] - vertices[3], vertices[1] - vertices[2])):
-            # FIXME one or the other, but not both
-            self.report({'ERROR'}, "Two edges must be parallel.")
+        if not is_trapezoid_but_not_rectangle(*vertices):
+            self.report({'ERROR'}, "Exactly two opposing edges must be parallel.")
             return {'CANCELLED'}
         # Get the background image data
         img_data = get_background_image_data(bpy.context)
@@ -989,8 +994,8 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         # Set extrinsic camera parameters and add a new rectangle
         update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
         # Switch to the active camera
-        #if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
-        #    bpy.ops.view3d.viewnumpad(type="CAMERA")
+        if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
+            bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
 
 ### Panel ########################################################################
