@@ -489,11 +489,7 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
     # Reconstruct the rectangle using the focal length and return the results, together with the shift values
     return (focal,) + reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
 
-def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
-    # Rectangle size assumptions
-    W = 1
-    L = 1
-
+def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, W, L):
     if not is_collinear(pb - pa, pc - pd):
         # Re-order the vertices
         pa, pb, pc, pd = pb, pc, pd, pa
@@ -546,7 +542,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
     print(x, y, z, focal)
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
-    return (focal, mathutils.Vector((x, -W / 2 - y, z)), shift_x, shift_y, coords)
+    return (focal, mathutils.Vector((x, -L / 2 - y, z)), shift_x, shift_y, coords)
 
 ### Utilities ####################################################################
 
@@ -959,7 +955,8 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
 
     # Properties
     vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
-    size_property = bpy.props.FloatProperty(name="Size", description = "Size of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+    width_property = bpy.props.FloatProperty(name="Width", description = "Width of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+    length_property = bpy.props.FloatProperty(name="Length", description = "Length of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
 
     @classmethod
     def poll(cls, context):
@@ -1014,21 +1011,22 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
             scale = scale / w * h
 
         # Perform the actual calibration
-        rec_size = 1
-        calibration_data = calibrate_camera_FXY_P_S(*vertices, scale)
+        width = self.width_property
+        length = self.length_property
+        if width <= 0:
+            width = 1
+        if length <= 0:
+            length = 1
+        calibration_data = calibrate_camera_FXY_P_S(*vertices, scale, width, length)
         cam_focal, cam_pos, camera_shift_x, camera_shift_y, coords = calibration_data
 
         cam_rot = mathutils.Euler((pi / 2, 0, 0), "XYZ")
 
-        if self.size_property > 0:
-            size_factor = self.size_property / rec_size
-        else:
-            size_factor = 1.0 / rec_size
         cam_obj, cam = get_or_create_camera(scene)
         # Set intrinsic camera parameters
         set_camera_parameters(cam, lens = cam_focal, shift_x = camera_shift_x, shift_y = camera_shift_y)
         # Set extrinsic camera parameters and add a new rectangle
-        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, size_factor)
+        update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scene, w, h, obj.name, coords, 1.0)
         # Switch to the active camera
         if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
             bpy.ops.view3d.viewnumpad(type="CAMERA")
