@@ -489,7 +489,7 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
     # Reconstruct the rectangle using the focal length and return the results, together with the shift values
     return (focal,) + reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
 
-def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, W, L):
+def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
     if not is_collinear(pb - pa, pc - pd):
         # Re-order the vertices
         pa, pb, pc, pd = pb, pc, pd, pa
@@ -519,19 +519,22 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, W, L):
     # Trapezoid height
     H = abs(pa[iy] - pd[iy])
 
-    # Calculate camera y- and z-positions
-    y = L / (A / C - 1)
-    z = ysign * H * W / A * (y + L) / L
-
     # Get the vanishing point
     v1 = get_vanishing_point(pa, pd, pb, pc)
     shift_x = -v1[ix] / scale
     shift_y = -v1[iy] / scale
 
-    # Get the focal length (assume sensor size 32 mm)
-    focal = A * 32 * y / W / scale
+    if focal:
+        # Focal length is given. Calculate rectangle length.
+        y = focal * W * scale / A / 32
+        L = y * (A / C - 1)
+    else:
+        # Rectangle length is given. Calculate focal length (assume sensor size 32 mm).
+        y = L / (A / C - 1)
+        focal = A * 32 * y / W / scale
 
-    # Calculate camera x-position
+    # Calculate camera x- and z-positions
+    z = ysign * H * W / A * (y + L) / L
     x = -(mA - v1[0]) / scale * y * 32 / focal
 
     if ix == 1:
@@ -539,10 +542,9 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, W, L):
         coords = (mathutils.Vector((0, -L/2, -W/2)), mathutils.Vector((0, -L/2, W/2)), mathutils.Vector((0, L/2, W/2)), mathutils.Vector((0, L/2, -W/2)))
     else:
         coords = (mathutils.Vector((-W/2, -L/2, 0)), mathutils.Vector((W/2, -L/2, 0)), mathutils.Vector((W/2, L/2, 0)), mathutils.Vector((-W/2, L/2, 0)))
-    print(x, y, z, focal)
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
-    return (focal, mathutils.Vector((x, -L / 2 - y, z)), shift_x, shift_y, coords)
+    return (focal, mathutils.Vector((x, -L / 2 - y, z)), shift_x, shift_y, coords, L)
 
 ### Utilities ####################################################################
 
@@ -954,9 +956,11 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     # Properties
-    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
+    mode_property = bpy.props.EnumProperty(items=[("use_focal", "Focal Length Mode", "Uses a fixed focal length for the camera", 0), ("use_length", "Rectangle Length Mode", "Uses a fixed rectangle length", 1)], name="Mode")
+    focal_property = bpy.props.FloatProperty(name="Focal Length", description = "Focal length of the camera (mm)", default = 35, min = 0.0, soft_min = 0.0, unit = "LENGTH")
     width_property = bpy.props.FloatProperty(name="Width", description = "Width of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
     length_property = bpy.props.FloatProperty(name="Length", description = "Length of the reconstructed rectangle", default = 1.0, min = 0.0, soft_min = 0.0, unit = "LENGTH")
+    vertical_property = bpy.props.BoolProperty(name = "Vertical orientation", description = "Places the reconstructed rectangle in vertical orientation", default = False)
 
     @classmethod
     def poll(cls, context):
@@ -1017,8 +1021,20 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
             width = 1
         if length <= 0:
             length = 1
-        calibration_data = calibrate_camera_FXY_P_S(*vertices, scale, width, length)
-        cam_focal, cam_pos, camera_shift_x, camera_shift_y, coords = calibration_data
+        if self.mode_property == "use_focal":
+            focal = self.focal_property
+            if focal <= 0:
+                focal = 35
+            length = None
+        else:
+            focal = None
+        calibration_data = calibrate_camera_FXY_P_S(*vertices, scale, focal, width, length)
+        cam_focal, cam_pos, camera_shift_x, camera_shift_y, coords, length = calibration_data
+
+        if self.mode_property == "use_focal":
+            self.length_property = length
+        else:
+            self.focal_property = cam_focal
 
         cam_rot = mathutils.Euler((pi / 2, 0, 0), "XYZ")
 
@@ -1031,6 +1047,18 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         if not bpy.context.space_data.region_3d.view_perspective == "CAMERA":
             bpy.ops.view3d.viewnumpad(type="CAMERA")
         return {'FINISHED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.props_enum(self, "mode_property")
+        row = layout.row()
+        row.prop(self, "focal_property")
+        row.enabled = self.mode_property == "use_focal"
+        layout.prop(self, "width_property")
+        row = layout.row()
+        row.prop(self, "length_property")
+        row.enabled = self.mode_property == "use_length"
+        layout.prop(self, "vertical_property")
 
 ### Panel ########################################################################
 
