@@ -521,8 +521,8 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
 
     # Get the vanishing point
     v1 = get_vanishing_point(pa, pd, pb, pc)
-    shift_x = -v1[ix] / scale
-    shift_y = -v1[iy] / scale
+    shift_x = -v1[0] / scale
+    shift_y = -v1[1] / scale
 
     if focal:
         # Focal length is given. Calculate rectangle length.
@@ -535,7 +535,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
 
     # Calculate camera x- and z-positions
     z = ysign * H * W / A * (y + L) / L
-    x = -(mA - v1[0]) / scale * y * 32 / focal
+    x = -(mA - v1[ix]) / scale * y * 32 / focal
 
     if ix == 1:
         x, z = z, x
