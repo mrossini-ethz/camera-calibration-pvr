@@ -498,12 +498,20 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
         # Re-order the vertices
         pa, pb, pc, pd = pb, pc, pd, pa
 
+    # Check whether parallel sides are horizontal or vertical
+    if abs(pb[0] - pa[0]) < 5 * float_info.epsilon:
+        ix = 1
+        iy = 0
+    else:
+        ix = 0
+        iy = 1
+
     # Trapezoid base and top
-    A = abs(pb[0] - pa[0])
-    C = abs(pc[0] - pd[0])
-    mA = (pa[0] + pb[0]) / 2
-    mC = (pd[0] + pc[0]) / 2
-    if pa[1] < pc[1]:
+    A = abs(pb[ix] - pa[ix])
+    C = abs(pc[ix] - pd[ix])
+    mA = (pa[ix] + pb[ix]) / 2
+    mC = (pd[ix] + pc[ix]) / 2
+    if pa[iy] < pc[iy]:
         ysign = 1
     else:
         ysign = -1
@@ -513,7 +521,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
         ysign = -ysign
 
     # Trapezoid height
-    H = abs(pa[1] - pd[1])
+    H = abs(pa[iy] - pd[iy])
 
     # Calculate camera y- and z-positions
     y = L / (A / C - 1)
@@ -521,18 +529,24 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale):
 
     # Get the vanishing point
     v1 = get_vanishing_point(pa, pd, pb, pc)
-    shift_x = -v1[0] / scale
-    shift_y = -v1[1] / scale
+    shift_x = -v1[ix] / scale
+    shift_y = -v1[iy] / scale
 
     # Get the focal length (assume sensor size 32 mm)
     focal = A * 32 * y / W / scale
 
     # Calculate camera x-position
     x = -(mA - v1[0]) / scale * y * 32 / focal
+
+    if ix == 1:
+        x, z = z, x
+        coords = (mathutils.Vector((0, -L/2, -W/2)), mathutils.Vector((0, -L/2, W/2)), mathutils.Vector((0, L/2, W/2)), mathutils.Vector((0, L/2, -W/2)))
+    else:
+        coords = (mathutils.Vector((-W/2, -L/2, 0)), mathutils.Vector((W/2, -L/2, 0)), mathutils.Vector((W/2, L/2, 0)), mathutils.Vector((-W/2, L/2, 0)))
     print(x, y, z, focal)
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
-    return (focal, mathutils.Vector((x, -W / 2 - y, z)), shift_x, shift_y)
+    return (focal, mathutils.Vector((x, -W / 2 - y, z)), shift_x, shift_y, coords)
 
 ### Utilities ####################################################################
 
@@ -1002,10 +1016,9 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         # Perform the actual calibration
         rec_size = 1
         calibration_data = calibrate_camera_FXY_P_S(*vertices, scale)
-        cam_focal, cam_pos, camera_shift_x, camera_shift_y = calibration_data
+        cam_focal, cam_pos, camera_shift_x, camera_shift_y, coords = calibration_data
 
         cam_rot = mathutils.Euler((pi / 2, 0, 0), "XYZ")
-        coords = (mathutils.Vector((-.5, -.5, 0)), mathutils.Vector((.5, -.5, 0)), mathutils.Vector((.5, .5, 0)), mathutils.Vector((-.5, .5, 0)))
 
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
