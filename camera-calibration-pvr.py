@@ -23,7 +23,7 @@
 
 import bpy
 import mathutils
-from math import sqrt, pi, atan2, degrees
+from math import sqrt, pi, atan2, degrees, sin, cos
 from sys import float_info
 
 bl_info = {
@@ -490,61 +490,88 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
     return (focal,) + reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
 
 def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
+    # Ensure that AB and CD are parallel
     if not is_collinear(pb - pa, pc - pd):
-        # Re-order the vertices
+        # Change the order of the vertices so that AB and CD are parallel
         pa, pb, pc, pd = pb, pc, pd, pa
 
-    # Check whether parallel sides are horizontal or vertical
-    if abs(pb[0] - pa[0]) < 5 * float_info.epsilon:
-        ix = 1
-        iy = 0
-    else:
-        ix = 0
-        iy = 1
+    # Ensure that AB is longer than CD
+    AB = (pb - pa).length
+    CD = (pd - pc).length
+    if CD > AB:
+        # Change the order of the vertices to make AB longer than CD
+        pa, pb, pc, pd = pc, pd, pa, pb
+        AB, CD = CD, AB
+    vAB = pb - pa
 
-    # Trapezoid base and top
-    A = abs(pb[ix] - pa[ix])
-    C = abs(pc[ix] - pd[ix])
-    mA = (pa[ix] + pb[ix]) / 2
-    mC = (pd[ix] + pc[ix]) / 2
-    if pa[iy] < pc[iy]:
-        ysign = 1
+    # Calculate the angle of the parallels with respect to the image
+    alpha = atan2(vAB[1], vAB[0])
+    # Ensure the angle is between -180 and 180 degrees
+    if alpha > pi/2:
+        alpha -= pi
+    elif alpha < -pi/2:
+        alpha += pi
+
+    # Decide plane orientation
+    is_horizontal = abs(alpha) <= pi/4
+
+    # Determine the camera rotation angle
+    if is_horizontal:
+        cam_rot = alpha
+    elif alpha > pi/4:
+        cam_rot = alpha - pi/2
+    elif alpha < -pi/4:
+        cam_rot = alpha + pi/2
+
+    # Calculate the vanishing point
+    v1 = get_vanishing_point(pa, pd, pb, pc)
+
+    # Midpoints of trapezoid base and top
+    mA = (pa + pb) / 2
+    mC = (pd + pc) / 2
+
+    # "Up" direction
+    vup = mathutils.Vector((-sin(alpha), cos(alpha)))
+    # Determine the z-offset direction
+    if vup.dot(pc - pa) > 0:
+        # Bottom situation
+        zsign = 1
     else:
-        ysign = -1
-    if C > A:
-        A, C = C, A
-        mA, mC = mC, mA
-        ysign = -ysign
+        # Top situation
+        zsign = -1
+    # Special situation
+    if not is_horizontal and alpha > 0:
+        zsign = -zsign
 
     # Trapezoid height
-    H = abs(pa[iy] - pd[iy])
+    vn = mathutils.Vector((vAB[1], -vAB[0]))
+    H = abs(vn.dot(pc - pa) / vn.length)
 
-    # Get the vanishing point
-    v1 = get_vanishing_point(pa, pd, pb, pc)
+    # Set camera shift parameters
     shift_x = -v1[0] / scale
     shift_y = -v1[1] / scale
 
     if focal:
         # Focal length is given. Calculate rectangle length.
-        y = focal * W * scale / A / 32
-        L = y * (A / C - 1)
+        y = focal * W * scale / AB / 32
+        L = y * (AB / CD - 1)
     else:
         # Rectangle length is given. Calculate focal length (assume sensor size 32 mm).
-        y = L / (A / C - 1)
-        focal = A * 32 * y / W / scale
+        y = L / (AB / CD - 1)
+        focal = AB * 32 * y / W / scale
 
     # Calculate camera x- and z-positions
-    z = ysign * H * W / A * (y + L) / L
-    x = -(mA - v1[ix]) / scale * y * 32 / focal
+    z = zsign * H * W / AB * (y + L) / L
+    x = -abs(vAB.normalized().dot(mA - v1)) / scale * y * 32 / focal
 
-    if ix == 1:
+    if is_horizontal:
+        coords = (mathutils.Vector((-W/2, -L/2, 0)), mathutils.Vector((W/2, -L/2, 0)), mathutils.Vector((W/2, L/2, 0)), mathutils.Vector((-W/2, L/2, 0)))
+    else:
         x, z = z, x
         coords = (mathutils.Vector((0, -L/2, -W/2)), mathutils.Vector((0, -L/2, W/2)), mathutils.Vector((0, L/2, W/2)), mathutils.Vector((0, L/2, -W/2)))
-    else:
-        coords = (mathutils.Vector((-W/2, -L/2, 0)), mathutils.Vector((W/2, -L/2, 0)), mathutils.Vector((W/2, L/2, 0)), mathutils.Vector((-W/2, L/2, 0)))
 
     # Reconstruct the rectangle using the focal length and return the results, together with the shift value
-    return (focal, mathutils.Vector((x, -L / 2 - y, z)), shift_x, shift_y, coords, L)
+    return (focal, mathutils.Vector((x, -L / 2 - y, z)), cam_rot, shift_x, shift_y, coords, L)
 
 ### Utilities ####################################################################
 
@@ -988,20 +1015,6 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         if not is_trapezoid_but_not_rectangle(*vertices):
             self.report({'ERROR'}, "Exactly two opposing edges must be parallel.")
             return {'CANCELLED'}
-        # Check direction of parallel edges (should be horizontal or vertical)
-        ya = abs(vertices[1][1] - vertices[0][1]) < 5 * float_info.epsilon
-        yb = abs(vertices[2][1] - vertices[1][1]) < 5 * float_info.epsilon
-        yc = abs(vertices[3][1] - vertices[2][1]) < 5 * float_info.epsilon
-        yd = abs(vertices[0][1] - vertices[3][1]) < 5 * float_info.epsilon
-        xa = abs(vertices[1][0] - vertices[0][0]) < 5 * float_info.epsilon
-        xb = abs(vertices[2][0] - vertices[1][0]) < 5 * float_info.epsilon
-        xc = abs(vertices[3][0] - vertices[2][0]) < 5 * float_info.epsilon
-        xd = abs(vertices[0][0] - vertices[3][0]) < 5 * float_info.epsilon
-        cond1 = ya == yc == True and yb == yd == False or ya == yc == False and yb == yd == True
-        cond2 = xa == xc == True and xb == xd == False or xa == xc == False and xb == xd == True
-        if cond1 == cond2:
-            self.report({'ERROR'}, "The two parallel edges must be either horizontal or vertical.")
-            return {'CANCELLED'}
 
         # Get the background image data
         img_data = get_background_image_data(bpy.context)
@@ -1014,7 +1027,7 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         if h > w:
             scale = scale / w * h
 
-        # Perform the actual calibration
+        # Prepare the calibration
         width = self.width_property
         length = self.length_property
         if width <= 0:
@@ -1028,15 +1041,28 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
             length = None
         else:
             focal = None
+        # For testing only
+        if False:
+            verts = vertices.copy()
+            for j in range(2):
+                for i in range(4):
+                    # Test the calibration with the given order of vertices
+                    calibration_data = calibrate_camera_FXY_P_S(*verts, scale, focal, width, length)
+                    print("Test:", *calibration_data)
+                    # Roll the vertices by one
+                    verts = verts[1:] + verts[:1]
+                # Reverse the list of vertices
+                verts.reverse()
+        # Perform calibration
         calibration_data = calibrate_camera_FXY_P_S(*vertices, scale, focal, width, length)
-        cam_focal, cam_pos, camera_shift_x, camera_shift_y, coords, length = calibration_data
+        cam_focal, cam_pos, cam_rot, camera_shift_x, camera_shift_y, coords, length = calibration_data
 
         if self.mode_property == "use_focal":
             self.length_property = length
         else:
             self.focal_property = cam_focal
 
-        cam_rot = mathutils.Euler((pi / 2, 0, 0), "XYZ")
+        cam_rot = mathutils.Euler((pi / 2, cam_rot, 0), "XYZ")
 
         cam_obj, cam = get_or_create_camera(scene)
         # Set intrinsic camera parameters
