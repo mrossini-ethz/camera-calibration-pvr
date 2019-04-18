@@ -31,4 +31,12 @@ class CameraCalibrationPVROperator(bpy.types.Operator):
         # Set the background image for the active camera (if necessary)
         reference.camera_apply_reference_image(camera, image)
 
+        # Set the render size orientation (landscape/portrait) according to the reference image
+        # Do NOT change the render size
+        rwidth = context.scene.render.resolution_x
+        rheight = context.scene.render.resolution_y
+        if width > height and rwidth < rheight or width < height and rwidth > rheight:
+            # Switch orientation
+            context.scene.render.resolution_x, context.scene.render.resolution_y = rheight, rwidth
+
         return {'FINISHED'}
