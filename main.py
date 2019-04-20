@@ -30,6 +30,7 @@ from . import polynomial
 from . import rootfinder
 from . import algebra
 from . import cameraplane
+from . import transformation
 from . import reference
 
 ### Algorithms for intrinsic camera parameters ###################################
@@ -213,52 +214,20 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
     # Return the best solution
     return solutions[best_index][1]
 
-def get_transformation(ra, rb, rc, rd):
-    """Average the vectors AD, BC and AB, DC and normalize them"""
-    ex = (rb - ra + rc - rd).normalized()
-    ey = (rd - ra + rc - rb).normalized()
-    # Get the unit vector in z-direction by using the cross product
-    # Normalize, because rx and ry may not be perfectly perpendicular
-    ez = ex.cross(ey).normalized()
-    return [ex, ey, ez, (ra + rb + rc + rd) / 4.0]
-
-def get_rot_angles(ex, ey, ez):
-    """Get the x- and y-rotation from the ez unit vector"""
-    rx = atan2(ez[1], ez[2])
-    rx_matrix = mathutils.Euler((rx, 0.0, 0.0), "XYZ")
-    # Rotate the ez vector by the previously found angle
-    ez.rotate(rx_matrix)
-    # Negative value because of right handed rotation
-    ry = - atan2(ez[0], ez[2])
-    # Rotate the ex vector by the previously found angles
-    rxy_matrix = mathutils.Euler((rx, ry, 0.0), "XYZ")
-    ex.rotate(rxy_matrix)
-    # Negative value because of right handed rotation
-    rz = - atan2(ex[1], ex[0])
-    return [rx, ry, rz]
-
-def apply_transformation(vertices, translation, rotation):
-    n = len(vertices)
-    result = []
-    for i in range(len(vertices)):
-        result.append(vertices[i] - translation)
-        result[-1].rotate(rotation)
-    return result
-
 ### Algorithms for extrinsic camera parameters ###################################
 
 def reconstruct_rectangle(pa, pb, pc, pd, scale, focal):
     # Calculate the coordinates of the rectangle in 3d
     coords = get_lambda_d(pa, pb, pc, pd, scale, focal)
     # Calculate the transformation of the rectangle
-    trafo = get_transformation(coords[0], coords[1], coords[2], coords[3])
+    trafo = transformation.get_transformation(coords[0], coords[1], coords[2], coords[3])
     # Reconstruct the rotation angles of the transformation
-    angles = get_rot_angles(trafo[0], trafo[1], trafo[2])
+    angles = transformation.get_rot_angles(trafo[0], trafo[1], trafo[2])
     xyz_matrix = mathutils.Euler((angles[0], angles[1], angles[2]), "XYZ")
     # Reconstruct the camera position and the corners of the rectangle in 3d such that it lies on the xy-plane
     tr = trafo[-1]
-    cam_pos = apply_transformation([mathutils.Vector((0.0, 0.0, 0.0))], tr, xyz_matrix)[0]
-    corners = apply_transformation(coords, tr, xyz_matrix)
+    cam_pos = transformation.apply_transformation([mathutils.Vector((0.0, 0.0, 0.0))], tr, xyz_matrix)[0]
+    corners = transformation.apply_transformation(coords, tr, xyz_matrix)
     # Printout for debugging
     print("Focal length:", focal)
     print("Camera rotation:", degrees(angles[0]), degrees(angles[1]), degrees(angles[2]))
@@ -383,18 +352,6 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
 
 ### Utilities ####################################################################
 
-def vertex_apply_transformation(p, scale, rotation, translation):
-    # Make a copy of the vertex
-    p = p.copy()
-    # Apply the scale
-    for i in range(3):
-        p[i] *= scale[i]
-    # Apply rotation
-    p.rotate(rotation)
-    # Apply translation and project to x-y-plane
-    p = p + translation
-    return p
-
 def object_name_append(name, suffix):
     # Check whether the object name is numbered
     if len(name) > 4 and name[-4] == "." and name[-3:].isdecimal():
@@ -492,10 +449,10 @@ class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
             self.report({'ERROR'}, "Selected object must be a mesh with 4 vertices in 1 polygon.")
             return {'CANCELLED'}
         # Get the vertex coordinates and transform them to get the global coordinates, then project to 2d
-        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pa = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not cameraplane.is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
@@ -584,12 +541,12 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
         print("Attached vertex:", attached_vertex)
         print("Polygon edges:", obj.data.polygons[0].edge_keys)
         # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
-        pa = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pb = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pe = vertex_apply_transformation(obj.data.vertices[attached_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-        pf = vertex_apply_transformation(obj.data.vertices[dangling_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pa = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[0]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pb = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[1]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pc = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pd = transformation.vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pe = transformation.vertex_apply_transformation(obj.data.vertices[attached_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+        pf = transformation.vertex_apply_transformation(obj.data.vertices[dangling_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not cameraplane.is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
@@ -680,13 +637,13 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
         print("Attached vertices:", attached_vertices)
         # Convert indices to vertices
         for i in range(2):
-            dangling_vertices[i] = vertex_apply_transformation(obj.data.vertices[dangling_vertices[i]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
-            attached_vertices[i] = vertex_apply_transformation(obj.data.vertices[attached_vertices[i]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+            dangling_vertices[i] = transformation.vertex_apply_transformation(obj.data.vertices[dangling_vertices[i]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
+            attached_vertices[i] = transformation.vertex_apply_transformation(obj.data.vertices[attached_vertices[i]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Get the vertex coordinates and apply the transformation to get global coordinates, then project to 2d
         vertices = []
         for i in range(4):
             index = obj.data.polygons[0].vertices[i]
-            vertices.append(vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
+            vertices.append(transformation.vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not cameraplane.is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
@@ -764,7 +721,7 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         vertices = []
         for i in range(4):
             index = obj.data.polygons[0].vertices[i]
-            vertices.append(vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
+            vertices.append(transformation.vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
         # Check whether the polygon is convex (this also checks for degnerate polygons)
         if not cameraplane.is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
