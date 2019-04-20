@@ -19,6 +19,11 @@ class PreviewsExamplePanel(bpy.types.Panel):
 
         layout = self.layout
         layout.prop(props, "image")
+        layout.operator("camera.camera_calibration_f_pr_s")
+        layout.operator("camera.camera_calibration_fx_pr_v")
+        layout.operator("camera.camera_calibration_fxy_pr_vv")
+        layout.operator("camera.camera_calibration_fxy_p_s")
+        layout.separator()
 
         layout.prop_tabs_enum(props, "perspective")
 
