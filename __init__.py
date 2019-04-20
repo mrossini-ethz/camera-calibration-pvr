@@ -42,6 +42,7 @@ if "bpy" in locals():
     imp.reload(operator)
     imp.reload(properties)
     imp.reload(polynomial)
+    imp.reload(rootfinder)
     imp.reload(main)
     imp.reload(panel)
 else:
@@ -50,6 +51,7 @@ else:
     from . import operator
     from . import properties
     from . import polynomial
+    from . import rootfinder
     from . import main
     from . import panel
 
