@@ -28,25 +28,8 @@ from sys import float_info
 
 from . import polynomial
 from . import rootfinder
+from . import algebra
 from . import reference
-
-### Linear Algebra functions #####################################################
-
-def solve_linear_system_2d(a, b, c, d, e, f):
-    """Solves the system of equations a*x + b*y = c, d*x + e*y = e using Gaussian Elimination (for numerical stability)."""
-    # Pivoting (to obtain stability)
-    if abs(d) > abs(a):
-        a, b, c, d, e, f = (d, e, f, a, b, c)
-    # Check for singularity
-    if a == 0:
-        return None
-    tmp = e - d * b / a
-    if tmp == 0:
-        return None
-    # This is final answer of the gaussian elimination
-    y = (f - d * c / a) / tmp
-    x = (c - b * y) / a
-    return (x, y)
 
 ### Algorithm helper functions ###################################################
 
@@ -57,7 +40,7 @@ def intersect_2d(pa, pb, pc, pd):
     ab = pb - pa
     cd = pd - pc
     # Solve linear system of equations s * ab + t * cd = ad
-    tmp = solve_linear_system_2d(ab[0], cd[0], ad[0], ab[1], cd[1], ad[1])
+    tmp = algebra.solve_linear_system_2d(ab[0], cd[0], ad[0], ab[1], cd[1], ad[1])
     # Check for parallel lines
     if not tmp:
         return None
@@ -161,7 +144,7 @@ def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     B2 = v1[1] - v3[1]
     C2 = v1[1] * v2[1] - v2[1] * v3[1] + v1[0] * v2[0] - v2[0] * v3[0]
     # Solve A1 * x + B1 * y = C1, A2 * x + B2 * y = C2
-    shift_x, shift_y = solve_linear_system_2d(A1, B1, C1, A2, B2, C2)
+    shift_x, shift_y = algebra.solve_linear_system_2d(A1, B1, C1, A2, B2, C2)
     optical_centre = mathutils.Vector((shift_x, shift_y))
     shift_x /= -scale
     shift_y /= -scale
