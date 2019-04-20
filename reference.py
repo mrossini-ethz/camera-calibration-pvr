@@ -31,7 +31,7 @@ def camera_apply_reference_image(camera, image):
     # Ensure correct settings
     if bkg_img.alpha == 0.0:
         bkg_img.alpha = 0.5
-    bkg_img.display_depth = "BACK"
+    bkg_img.display_depth = "FRONT"
     bkg_img.frame_method = "CROP"
     bkg_img.offset[0] = 0.0
     bkg_img.offset[1] = 0.0
