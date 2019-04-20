@@ -29,38 +29,8 @@ from sys import float_info
 from . import polynomial
 from . import rootfinder
 from . import algebra
+from . import cameraplane
 from . import reference
-
-### Algorithm helper functions ###################################################
-
-def intersect_2d(pa, pb, pc, pd):
-    """Find the intersection point of the lines AB and DC (2 dimensions)."""
-    # Helper vectors
-    ad = pd - pa
-    ab = pb - pa
-    cd = pd - pc
-    # Solve linear system of equations s * ab + t * cd = ad
-    tmp = algebra.solve_linear_system_2d(ab[0], cd[0], ad[0], ab[1], cd[1], ad[1])
-    # Check for parallel lines
-    if not tmp:
-        return None
-    s, t = tmp
-    # Return the intersection point
-    return pa + s * ab
-
-def get_vanishing_point(pa, pb, pc, pd):
-    """Get the vanishing point of the lines AB and DC."""
-    return intersect_2d(pa, pb, pc, pd)
-
-def get_vanishing_points(pa, pb, pc, pd):
-    """Get the two vanishing points of the rectangle defined by the corners pa pb pc pd"""
-    return (get_vanishing_point(pa, pb, pd, pc), get_vanishing_point(pa, pd, pb, pc))
-
-def get_camera_plane_vector(p, scale, focal_length = 1.0):
-    """Convert a 2d point in the camera plane into a 3d vector from the camera onto the camera plane"""
-    # field_of_view = 2 * atan(sensor_size / 2 * focal_length), assume sensor_size = 32
-    s = (16.0 / focal_length) / (scale / 2.0)
-    return mathutils.Vector((p[0] * s, p[1] * s, -1.0))
 
 ### Algorithms for intrinsic camera parameters ###################################
 
@@ -87,16 +57,16 @@ def get_camera_plane_vector(p, scale, focal_length = 1.0):
 
 def solve_F_S(pa, pb, pc, pd, scale):
     """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
-    pm, pn = get_vanishing_points(pa, pb, pc, pd)
+    pm, pn = cameraplane.get_vanishing_points(pa, pb, pc, pd)
     # Calculate the vectors from camera to the camera plane where the vanishing points are located
-    vm = get_camera_plane_vector(pm, scale)
-    vn = get_camera_plane_vector(pn, scale)
+    vm = cameraplane.get_camera_plane_vector(pm, scale)
+    vn = cameraplane.get_camera_plane_vector(pn, scale)
     # Calculate the focal length
     return sqrt(abs(vm.dot(vn)))
 
 def solve_FY_V(pa, pb, pc, pd, pe, pf, scale):
     # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
-    if is_collinear(pb - pa, pc - pd):
+    if cameraplane.is_collinear(pb - pa, pc - pd):
         # rename vertices to make AD and BC parallel
         tmp = [pa, pb, pc, pd]
         pa = tmp[1]
@@ -109,10 +79,10 @@ def solve_FY_V(pa, pb, pc, pd, pe, pf, scale):
     # FIXME: remove debugging printouts in this function
     print("horizon", horizon)
     # Determine the vanishing point of the polygon ABCD
-    vanish1 = get_vanishing_point(pa, pb, pc, pd)
+    vanish1 = cameraplane.get_vanishing_point(pa, pb, pc, pd)
     print("vanish1", vanish1)
     # Intersect the dangling edge with the horizon to find the second vanishing point
-    vanish2 = get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
+    vanish2 = cameraplane.get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
     print("vanish2", vanish2)
     # Find the rotation point
     # FIXME: don't use the x-coordinate directly
@@ -130,9 +100,9 @@ def solve_FY_V(pa, pb, pc, pd, pe, pf, scale):
 
 def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     # Get the 3 vanishing points
-    v1 = get_vanishing_point(vertices[0], vertices[3], vertices[1], vertices[2])
-    v2 = get_vanishing_point(attached_vertices[0], dangling_vertices[0], attached_vertices[1], dangling_vertices[1])
-    v3 = get_vanishing_point(vertices[0], vertices[1], vertices[3], vertices[2])
+    v1 = cameraplane.get_vanishing_point(vertices[0], vertices[3], vertices[1], vertices[2])
+    v2 = cameraplane.get_vanishing_point(attached_vertices[0], dangling_vertices[0], attached_vertices[1], dangling_vertices[1])
+    v3 = cameraplane.get_vanishing_point(vertices[0], vertices[1], vertices[3], vertices[2])
     print("Vanishing points:", v1, v2, v3)
     # Use that v1, v2, and v3 are all perpendicular to each other to solve for the lens shift
     # x*(v2x - v3x) + y*(v2y - v3y) = v1y*v2y - v1y*v3y + v1x*v2x - v1x*v3x
@@ -150,8 +120,8 @@ def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     shift_y /= -scale
     print("Shift:", shift_x, shift_y)
     # Get the focal length
-    vm = get_camera_plane_vector(v1 - optical_centre, scale)
-    vn = get_camera_plane_vector(v3 - optical_centre, scale)
+    vm = cameraplane.get_camera_plane_vector(v1 - optical_centre, scale)
+    vn = cameraplane.get_camera_plane_vector(v3 - optical_centre, scale)
     # Calculate the focal length
     focal = sqrt(abs(vm.dot(vn)))
     print("Focal:", focal)
@@ -179,10 +149,10 @@ def get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd):
 
 def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
     """Calculate the vectors from camera to the camera plane where the rectangle corners are located"""
-    va = get_camera_plane_vector(pa, scale, focal_length).normalized()
-    vb = get_camera_plane_vector(pb, scale, focal_length).normalized()
-    vc = get_camera_plane_vector(pc, scale, focal_length).normalized()
-    vd = get_camera_plane_vector(pd, scale, focal_length).normalized()
+    va = cameraplane.get_camera_plane_vector(pa, scale, focal_length).normalized()
+    vb = cameraplane.get_camera_plane_vector(pb, scale, focal_length).normalized()
+    vc = cameraplane.get_camera_plane_vector(pc, scale, focal_length).normalized()
+    vd = cameraplane.get_camera_plane_vector(pd, scale, focal_length).normalized()
     # Calculate dot products
     qab = va.dot(vb)
     qac = va.dot(vc)
@@ -329,7 +299,7 @@ def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, s
 
 def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
     # Ensure that AB and CD are parallel
-    if not is_collinear(pb - pa, pc - pd):
+    if not cameraplane.is_collinear(pb - pa, pc - pd):
         # Change the order of the vertices so that AB and CD are parallel
         pa, pb, pc, pd = pb, pc, pd, pa
 
@@ -362,7 +332,7 @@ def calibrate_camera_FXY_P_S(pa, pb, pc, pd, scale, focal, W, L):
         cam_rot = alpha + pi/2
 
     # Calculate the vanishing point
-    v1 = get_vanishing_point(pa, pd, pb, pc)
+    v1 = cameraplane.get_vanishing_point(pa, pd, pb, pc)
 
     # Midpoints of trapezoid base and top
     mA = (pa + pb) / 2
@@ -424,48 +394,6 @@ def vertex_apply_transformation(p, scale, rotation, translation):
     # Apply translation and project to x-y-plane
     p = p + translation
     return p
-
-def is_collinear(v1, v2):
-    """Determines whether the two given vectors are collinear using a limit of 0.1 degrees"""
-    limit = 0.1 * pi / 180
-    # Test the angle
-    return abs(v1.angle(v2)) < limit
-
-def is_trapezoid(pa, pb, pc, pd):
-    """Determines whether the polygon with the vertices pa, pb, pc, pd is a trapezoid"""
-    return is_collinear(pb - pa, pc - pd) or is_collinear(pd - pa, pc - pb)
-
-def is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
-    """Determines whether the polygon with the vertices pa, pb, pc, pd is a trapezoid"""
-    a = is_collinear(pb - pa, pc - pd)
-    b = is_collinear(pd - pa, pc - pb)
-    # Exclusive OR
-    return a != b
-
-def is_to_the_right(a, b, c):
-    """Checks whether the rotation angle from vector AB to vector BC is between 0 and 180 degrees when rotating to the right. Returns a number."""
-    # Vector from a to b
-    ab = b - a
-    # Vector from b to c
-    bc = c - b
-    # This is a simple dot product with bc and the vector perpendicular to ab (rotated clockwise)
-    return - ab[0] * bc[1] + ab[1] * bc[0]
-
-def is_convex(pa, pb, pc, pd):
-    """Checks whether the given quadrilateral corners form a convex quadrilateral."""
-    # Check, which side each point is on
-    to_the_right = []
-    to_the_right.append(is_to_the_right(pa, pb, pc))
-    to_the_right.append(is_to_the_right(pb, pc, pd))
-    to_the_right.append(is_to_the_right(pc, pd, pa))
-    to_the_right.append(is_to_the_right(pd, pa, pb))
-    # Check whether all are on the same side
-    a = True
-    b = True
-    for ttr in to_the_right:
-        a = a and ttr > 0
-        b = b and ttr < 0
-    return a or b
 
 def object_name_append(name, suffix):
     # Check whether the object name is numbered
@@ -569,11 +497,11 @@ class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
         pc = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[2]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         pd = vertex_apply_transformation(obj.data.vertices[obj.data.polygons[0].vertices[3]].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
-        if not is_convex(pa, pb, pc, pd):
+        if not cameraplane.is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        if is_trapezoid(pa, pb, pc, pd):
+        if cameraplane.is_trapezoid(pa, pb, pc, pd):
             self.report({'ERROR'}, "Edges of the input rectangle must not be parallel.")
             return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd)
@@ -663,11 +591,11 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
         pe = vertex_apply_transformation(obj.data.vertices[attached_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         pf = vertex_apply_transformation(obj.data.vertices[dangling_vertex].co, obj.scale, obj.rotation_euler, obj.location).to_2d()
         # Check whether the polygon is convex (this also checks for degnerate polygons)
-        if not is_convex(pa, pb, pc, pd):
+        if not cameraplane.is_convex(pa, pb, pc, pd):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        if not is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
+        if not cameraplane.is_trapezoid_but_not_rectangle(pa, pb, pc, pd):
             self.report({'ERROR'}, "Exactly one opposing edge pair of the input rectangle must be parallel.")
             return {'CANCELLED'}
         print("Vertices:", pa, pb, pc, pd, pe, pf)
@@ -760,11 +688,11 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
             index = obj.data.polygons[0].vertices[i]
             vertices.append(vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
         # Check whether the polygon is convex (this also checks for degnerate polygons)
-        if not is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
+        if not cameraplane.is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        if is_collinear(vertices[0] - vertices[1], vertices[3] - vertices[2]) or is_collinear(vertices[0] - vertices[3], vertices[1] - vertices[2]) or is_collinear(dangling_vertices[0] - attached_vertices[0], dangling_vertices[1] - attached_vertices[1]):
+        if cameraplane.is_collinear(vertices[0] - vertices[1], vertices[3] - vertices[2]) or cameraplane.is_collinear(vertices[0] - vertices[3], vertices[1] - vertices[2]) or cameraplane.is_collinear(dangling_vertices[0] - attached_vertices[0], dangling_vertices[1] - attached_vertices[1]):
             self.report({'ERROR'}, "Edges must not be parallel.")
             return {'CANCELLED'}
 
@@ -838,11 +766,11 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
             index = obj.data.polygons[0].vertices[i]
             vertices.append(vertex_apply_transformation(obj.data.vertices[index].co, obj.scale, obj.rotation_euler, obj.location).to_2d())
         # Check whether the polygon is convex (this also checks for degnerate polygons)
-        if not is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
+        if not cameraplane.is_convex(vertices[0], vertices[1], vertices[2], vertices[3]):
             self.report({'ERROR'}, "The polygon in the mesh must be convex and may not be degenerate.")
             return {'CANCELLED'}
         # Check for parallel edges
-        if not is_trapezoid_but_not_rectangle(*vertices):
+        if not cameraplane.is_trapezoid_but_not_rectangle(*vertices):
             self.report({'ERROR'}, "Exactly two opposing edges must be parallel.")
             return {'CANCELLED'}
 

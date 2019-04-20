@@ -44,6 +44,7 @@ if "bpy" in locals():
     imp.reload(polynomial)
     imp.reload(rootfinder)
     imp.reload(algebra)
+    imp.reload(cameraplane)
     imp.reload(main)
     imp.reload(panel)
 else:
@@ -54,6 +55,7 @@ else:
     from . import polynomial
     from . import rootfinder
     from . import algebra
+    from . import cameraplane
     from . import main
     from . import panel
 
