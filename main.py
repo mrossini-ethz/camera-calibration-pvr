@@ -26,88 +26,8 @@ import mathutils
 from math import sqrt, pi, atan2, degrees, sin, cos
 from sys import float_info
 
+from . import polynomial
 from . import reference
-
-### Polynomials ##################################################################
-
-def make_poly(coeffs):
-    """Make a new polynomial"""
-    return list(coeffs)
-
-def poly_norm(poly):
-    """Normalizes a given polynomial"""
-    f = poly[-1]
-    result = []
-    for coeff in poly:
-        result.append(coeff / f)
-    return result
-
-def poly_sub(a, b):
-    """Subtract the two polynomials"""
-    n = max(len(a), len(b))
-    _a = [0] * n
-    _b = [0] * n
-    for i in range(len(a)):
-        _a[i] = a[i]
-    for i in range(len(b)):
-        _b[i] = b[i]
-    result = []
-    for i in range(n):
-        result.append(_a[i] - _b[i])
-    return result
-
-def poly_scale(poly, factor):
-    """Normalizes a given polynomial"""
-    f = poly[-1]
-    result = []
-    for coeff in poly:
-        result.append(coeff * factor)
-    return result
-
-def poly_reduce(poly):
-    """Removes leading coefficients that are zero"""
-    result = []
-    for i in range(len(poly) - 1, -1, -1):
-        if poly[i] != 0 or len(result) > 0:
-            result.append(poly[i])
-    result.reverse()
-    return result
-
-def poly_derivative(poly):
-    """Calculates the derivative of the polynomial"""
-    result = []
-    for i in range(1, len(poly)):
-        result.append(i * poly[i])
-    return result
-
-def poly_eval(poly, x):
-    """Evaluate the polynomial"""
-    result = 0.0
-    for i in range(len(poly)):
-        result += poly[i] * x ** i
-    return result
-
-def poly_order(poly):
-    """Get the order of the polynomial"""
-    return len(poly) - 1
-
-def poly_coeff(poly, idx):
-    """Get the nth coefficient of the polynomial"""
-    if idx > len(poly) - 1:
-        return 0.0
-    elif idx >= 0:
-        return poly[idx]
-
-def poly_div(a, b):
-    """Calculate the polynom division of a and b"""
-    na = poly_order(a)
-    nb = poly_order(b)
-    result = [0] * (na - nb + 1)
-    for n in range(na, nb - 1, -1):
-        f = a[n] / b[-1]
-        result[n - nb] = f
-        a = poly_sub(a, [0] * (n - nb) + poly_scale(b, f))
-    return result
 
 ### Root Finder ##################################################################
 
@@ -129,12 +49,12 @@ def find_root(f, df, ddf, initial_guess = 0.0, limit = 0.00001, max_iterations =
 def find_poly_root(poly, initial_guess = 0.0, limit = 0.00001, max_iterations = 1000):
     """Find a root of the given polynomial"""
     # Calculate the polynomial derivatives
-    dpoly = poly_derivative(poly)
-    ddpoly = poly_derivative(dpoly)
+    dpoly = polynomial.derivative(poly)
+    ddpoly = polynomial.derivative(dpoly)
     # Closures !!!
-    f = lambda x: poly_eval(poly, x)
-    df = lambda x: poly_eval(dpoly, x)
-    ddf = lambda x: poly_eval(ddpoly, x)
+    f = lambda x: polynomial.eval(poly, x)
+    df = lambda x: polynomial.eval(dpoly, x)
+    ddf = lambda x: polynomial.eval(ddpoly, x)
     # Call the generic root finder
     return find_root(f, df, ddf, initial_guess, limit, max_iterations)
 
@@ -142,19 +62,19 @@ def find_poly_roots(poly, initial_guess = 0.0, limit = 0.00001, max_iterations =
     """Find all roots of the given polynomial"""
     solutions = []
     # Find solutions numerically for n > 0, split them off until n = 2
-    for q in range(poly_order(poly) - 2):
+    for q in range(polynomial.order(poly) - 2):
         x = find_poly_root(poly, initial_guess, limit, max_iterations)
         if not x:
             break
-        poly = poly_div(poly, make_poly([-x, 1]))
+        poly = polynomial.div(poly, polynomial.make_poly([-x, 1]))
         solutions.append(x)
     # Find the rest of the roots analytically
-    if poly_order(poly) == 1:
-        solutions.append(- poly_coeff(poly, 1) / poly_coeff(poly, 0))
-    elif poly_order(poly) == 2:
-        a = poly_coeff(poly, 2)
-        b = poly_coeff(poly, 1)
-        c = poly_coeff(poly, 0)
+    if polynomial.order(poly) == 1:
+        solutions.append(- polynomial.coeff(poly, 1) / polynomial.coeff(poly, 0))
+    elif polynomial.order(poly) == 2:
+        a = polynomial.coeff(poly, 2)
+        b = polynomial.coeff(poly, 1)
+        c = polynomial.coeff(poly, 0)
         d = b ** 2 - 4 * a * c
         if d == 0:
             solutions.append(-b / (2 * a))
@@ -316,7 +236,7 @@ def get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd):
     d2 = qab ** 2 * qac + qab ** 2 * qad * qcd + 3 * qab * qac * qad * qbd + qab * qbd * qcd - qab * qad ** 2 * qbc - qab * qbc - qac * qad ** 2 - qad * qbc * qbd - 2 * qad * qcd
     d1 = qab * qad * qbc + 2 * qac * qad + qcd - 2 * qab ** 2 * qac * qad - qab ** 2 * qcd - qab * qac * qbd
     d0 = qab ** 2 * qac - qac
-    return make_poly([d0, d1, d2, d3, d4])
+    return polynomial.make_poly([d0, d1, d2, d3, d4])
 
 def get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd):
     """Equation B (see paper)"""
@@ -325,7 +245,7 @@ def get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd):
     d2 = 2 * qab * qad + qac * qad * qbc + qad ** 2 * qbc * qcd + qad **2 * qbd + qbc * qcd - qab * qac * qcd - qab * qad * qcd ** 2 - 3 * qac * qad * qbd * qcd - qbd * qcd ** 2
     d1 = qab * qac * qad * qcd + qac ** 2 * qad * qbd + 2 * qac * qbd * qcd - qab * qad ** 2 - qac * qad ** 2 * qbc - qac * qbc - qad * qbc * qcd
     d0 = qac * qad * qbc - qac ** 2 * qbd
-    return make_poly([d0, d1, d2, d3, d4])
+    return polynomial.make_poly([d0, d1, d2, d3, d4])
 
 def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
     """Calculate the vectors from camera to the camera plane where the rectangle corners are located"""
@@ -341,11 +261,11 @@ def get_lambda_d(pa, pb, pc, pd, scale, focal_length):
     qbd = vb.dot(vd)
     qcd = vc.dot(vd)
     # Determine the equation that needs to be solved
-    pa = poly_norm(get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd))
-    pb = poly_norm(get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd))
+    pa = polynomial.norm(get_lambda_d_poly_a(qab, qac, qad, qbc, qbd, qcd))
+    pb = polynomial.norm(get_lambda_d_poly_b(qab, qac, qad, qbc, qbd, qcd))
     print("A:", pa)
     print("B:", pb)
-    p = poly_reduce(poly_sub(pa, pb))
+    p = polynomial.reduce(polynomial.sub(pa, pb))
     print("P:", p)
     # Solve the equation
     roots = find_poly_roots(p)
