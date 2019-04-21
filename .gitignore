@@ -1,1 +1,3 @@
+__pycache__
 doc/figures/*.log
+figures/*.png
