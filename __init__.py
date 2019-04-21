@@ -51,7 +51,6 @@ if "bpy" in locals():
     imp.reload(onepoint)
     imp.reload(twopoint)
     imp.reload(threepoint)
-    imp.reload(main)
     imp.reload(panel)
 else:
     from . import images
@@ -68,7 +67,6 @@ else:
     from . import onepoint
     from . import twopoint
     from . import threepoint
-    from . import main
     from . import panel
 
 import bpy
@@ -79,10 +77,10 @@ def register():
     bpy.utils.register_class(properties.CameraCalibrationPVRProperties)
     bpy.types.Scene.camera_calibration_pvr_properties = bpy.props.PointerProperty(type=properties.CameraCalibrationPVRProperties)
     bpy.utils.register_class(operator.CameraCalibrationPVROperator)
-    bpy.utils.register_class(main.CameraCalibration_F_PR_S_Operator)
-    bpy.utils.register_class(main.CameraCalibration_FX_PR_V_Operator)
-    bpy.utils.register_class(main.CameraCalibration_FXY_PR_VV_Operator)
-    bpy.utils.register_class(main.CameraCalibration_FXY_P_S_Operator)
+    bpy.utils.register_class(operator.CameraCalibration_F_PR_S_Operator)
+    bpy.utils.register_class(operator.CameraCalibration_FX_PR_V_Operator)
+    bpy.utils.register_class(operator.CameraCalibration_FXY_PR_VV_Operator)
+    bpy.utils.register_class(operator.CameraCalibration_FXY_P_S_Operator)
     bpy.utils.register_class(panel.PreviewsExamplePanel)
 
 
@@ -90,10 +88,10 @@ def unregister():
     bpy.utils.previews.remove(images.preview_collection)
 
     bpy.utils.unregister_class(panel.PreviewsExamplePanel)
-    bpy.utils.unregister_class(main.CameraCalibration_F_PR_S_Operator)
-    bpy.utils.unregister_class(main.CameraCalibration_FX_PR_V_Operator)
-    bpy.utils.unregister_class(main.CameraCalibration_FXY_PR_VV_Operator)
-    bpy.utils.unregister_class(main.CameraCalibration_FXY_P_S_Operator)
+    bpy.utils.unregister_class(operator.CameraCalibration_F_PR_S_Operator)
+    bpy.utils.unregister_class(operator.CameraCalibration_FX_PR_V_Operator)
+    bpy.utils.unregister_class(operator.CameraCalibration_FXY_PR_VV_Operator)
+    bpy.utils.unregister_class(operator.CameraCalibration_FXY_P_S_Operator)
     bpy.utils.unregister_class(operator.CameraCalibrationPVROperator)
     bpy.utils.unregister_class(properties.CameraCalibrationPVRProperties)
 
