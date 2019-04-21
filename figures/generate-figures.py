@@ -36,7 +36,7 @@ def point_on(a, b, f):
     return (a[0] + f * u, a[1] + f * v)
 
 def draw(filename, alpha, beta):
-    with cairo.SVGSurface(filename + ".svg", size, size) as surface:
+    with cairo.ImageSurface(cairo.Format.ARGB32, size, size) as surface:
         ctx = cairo.Context(surface)
 
         corners = [(-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1), (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)]
