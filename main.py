@@ -34,6 +34,7 @@ from . import reference
 from . import solverectangle
 from . import scene
 from . import onepoint
+from . import twopoint
 
 ### Algorithms for intrinsic camera parameters ###################################
 
@@ -65,40 +66,6 @@ def solve_F_S(pa, pb, pc, pd, scale):
     vn = cameraplane.get_camera_plane_vector(pn, scale)
     # Calculate the focal length
     return sqrt(abs(vm.dot(vn)))
-
-def solve_FY_V(pa, pb, pc, pd, pe, pf, scale):
-    # Determine which two edges of the polygon ABCD are parallel, reorder if necessary
-    if cameraplane.is_collinear(pb - pa, pc - pd):
-        # rename vertices to make AD and BC parallel
-        tmp = [pa, pb, pc, pd]
-        pa = tmp[1]
-        pb = tmp[2]
-        pc = tmp[3]
-        pd = tmp[0]
-    # Get the horizon direction vector
-    vertical = pd - pa + pc - pb
-    horizon = mathutils.Vector((-vertical[1], vertical[0]))
-    # FIXME: remove debugging printouts in this function
-    print("horizon", horizon)
-    # Determine the vanishing point of the polygon ABCD
-    vanish1 = cameraplane.get_vanishing_point(pa, pb, pc, pd)
-    print("vanish1", vanish1)
-    # Intersect the dangling edge with the horizon to find the second vanishing point
-    vanish2 = cameraplane.get_vanishing_point(pe, pf, vanish1, vanish1 + horizon)
-    print("vanish2", vanish2)
-    # Find the rotation point
-    # FIXME: don't use the x-coordinate directly
-    t = -vanish1[0] / horizon[0]
-    optical_centre = vanish1 + t * horizon
-    # Get the camera shift
-    shift = -optical_centre[1] / scale
-    print("shift", shift)
-    # Find the focal length
-    dist = sqrt((vanish1 - optical_centre).length * (vanish2 - optical_centre).length)
-    # Assume sensor size of 32
-    focal = dist / (scale / 2.) * 16
-    print("focal", focal)
-    return (focal, optical_centre, shift)
 
 def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
     # Get the 3 vanishing points
@@ -136,17 +103,6 @@ def calibrate_camera_F_PR_S(pa, pb, pc, pd, scale):
     focal = solve_F_S(pa, pb, pc, pd, scale)
     # Reconstruct the rectangle using this focal length
     return (focal,) + solverectangle.reconstruct_rectangle(pa, pb, pc, pd, scale, focal)
-
-def calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale):
-    # Get the focal length, the optical centre and the vertical shift of the camera
-    focal, optical_centre, shift = solve_FY_V(pa, pb, pc, pd, pe, pf, scale)
-    # Correct for the camera shift
-    pa = pa - optical_centre
-    pb = pb - optical_centre
-    pc = pc - optical_centre
-    pd = pd - optical_centre
-    # Reconstruct the rectangle using the focal length and return the results, together with the shift value
-    return (focal,) + solverectangle.reconstruct_rectangle(pa, pb, pc, pd, scale, focal) + (shift,)
 
 def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, scale):
     # Get the focal length, the optical centre and the vertical shift of the camera
@@ -303,7 +259,7 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
         if h > w:
             scale = scale / w * h
         # Perform the actual calibration
-        calibration_data = calibrate_camera_FX_PR_V(pa, pb, pc, pd, pe, pf, scale)
+        calibration_data = twopoint.calibrate_camera(pa, pb, pc, pd, pe, pf, scale)
         cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift = calibration_data
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
