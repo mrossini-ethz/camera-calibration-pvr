@@ -35,83 +35,7 @@ from . import solverectangle
 from . import scene
 from . import onepoint
 from . import twopoint
-
-### Algorithms for intrinsic camera parameters ###################################
-
-# The algorithm solves the following intrinsic parameters of the camera:
-# - (F) focal length
-# - (X) lens shift in x
-# - (Y) lens shift in y
-# - (A) pixel aspect ratio
-# There are the following solutions for the extrinsic parameters:
-# - (P) camera position
-# - (R) camera rotation
-# The following inputs are accepted:
-# - (S) single rectangle
-# - (V) single rectangle with dangling vertex
-# - (D) dual rectangle
-# Naming convention for the different solvers (examples):
-# - solve_F_S(): solves for the focal length using a single rectangle as input
-# - solve_FY_V(): solves for the focal length and y-shift from a single rectangle with dangling vertex
-# - solve_FXY_VV(): solves for the focal length and x- and y- shift from a single rectangle with two dangling vertices
-# - calibrate_camera_F_PR_S(): calibrates focal length, position and rotation from a single rectangle
-# - calibrate_camera_FX_PR_V(): calibrates focal length, x-shift, position and rotation from a single rectangle with dangling vertex
-# - calibrate_camera_FXY_PR_VV(): calibrates focal length, x- and y-shift, position and rotation from a single rectangle with two dangling vertices
-
-def solve_F_S(pa, pb, pc, pd, scale):
-    """Get the vanishing points of the rectangle as defined by pa, pb, pc and pd"""
-    pm, pn = cameraplane.get_vanishing_points(pa, pb, pc, pd)
-    # Calculate the vectors from camera to the camera plane where the vanishing points are located
-    vm = cameraplane.get_camera_plane_vector(pm, scale)
-    vn = cameraplane.get_camera_plane_vector(pn, scale)
-    # Calculate the focal length
-    return sqrt(abs(vm.dot(vn)))
-
-def solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale):
-    # Get the 3 vanishing points
-    v1 = cameraplane.get_vanishing_point(vertices[0], vertices[3], vertices[1], vertices[2])
-    v2 = cameraplane.get_vanishing_point(attached_vertices[0], dangling_vertices[0], attached_vertices[1], dangling_vertices[1])
-    v3 = cameraplane.get_vanishing_point(vertices[0], vertices[1], vertices[3], vertices[2])
-    print("Vanishing points:", v1, v2, v3)
-    # Use that v1, v2, and v3 are all perpendicular to each other to solve for the lens shift
-    # x*(v2x - v3x) + y*(v2y - v3y) = v1y*v2y - v1y*v3y + v1x*v2x - v1x*v3x
-    # x*(v1x - v3x) + y*(v1y - v3y) = v1y*v2y - v2y*v3y + v1x*v2x - v2x*v3x
-    A1 = v2[0] - v3[0]
-    B1 = v2[1] - v3[1]
-    C1 = v1[1] * v2[1] - v1[1] * v3[1] + v1[0] * v2[0] - v1[0] * v3[0]
-    A2 = v1[0] - v3[0]
-    B2 = v1[1] - v3[1]
-    C2 = v1[1] * v2[1] - v2[1] * v3[1] + v1[0] * v2[0] - v2[0] * v3[0]
-    # Solve A1 * x + B1 * y = C1, A2 * x + B2 * y = C2
-    shift_x, shift_y = algebra.solve_linear_system_2d(A1, B1, C1, A2, B2, C2)
-    optical_centre = mathutils.Vector((shift_x, shift_y))
-    shift_x /= -scale
-    shift_y /= -scale
-    print("Shift:", shift_x, shift_y)
-    # Get the focal length
-    vm = cameraplane.get_camera_plane_vector(v1 - optical_centre, scale)
-    vn = cameraplane.get_camera_plane_vector(v3 - optical_centre, scale)
-    # Calculate the focal length
-    focal = sqrt(abs(vm.dot(vn)))
-    print("Focal:", focal)
-    return focal, shift_x, shift_y, optical_centre
-
-################################################################################################################################################
-
-def calibrate_camera_F_PR_S(pa, pb, pc, pd, scale):
-    # Calculate the focal length of the camera
-    focal = solve_F_S(pa, pb, pc, pd, scale)
-    # Reconstruct the rectangle using this focal length
-    return (focal,) + solverectangle.reconstruct_rectangle(pa, pb, pc, pd, scale, focal)
-
-def calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, scale):
-    # Get the focal length, the optical centre and the vertical shift of the camera
-    focal, shift_x, shift_y, optical_centre = solve_FXY_VV(vertices, attached_vertices, dangling_vertices, scale)
-    # Correct for the camera shift
-    for i in range(len(vertices)):
-        vertices[i] -= optical_centre
-    # Reconstruct the rectangle using the focal length and return the results, together with the shift values
-    return (focal,) + solverectangle.reconstruct_rectangle(vertices[0], vertices[1], vertices[2], vertices[3], scale, focal) + (shift_x, shift_y)
+from . import threepoint
 
 ### Operator F PR S ##############################################################
 
@@ -166,7 +90,7 @@ class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
             scale = scale / w * h
 
         # Perform the actual calibration
-        cam_focal, cam_pos, cam_rot, coords, rec_size = calibrate_camera_F_PR_S(pa, pb, pc, pd, scale)
+        cam_focal, cam_pos, cam_rot, coords, rec_size = threepoint.calibrate_camera(pa, pb, pc, pd, scale)
 
         if self.size_property > 0:
             size_factor = self.size_property / rec_size
@@ -356,7 +280,7 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
             scale = scale / w * h
 
         # Perform the actual calibration
-        calibration_data = calibrate_camera_FXY_PR_VV(vertices, attached_vertices, dangling_vertices, scale)
+        calibration_data = threepoint.calibrate_camera_shifted(vertices, attached_vertices, dangling_vertices, scale)
         cam_focal, cam_pos, cam_rot, coords, rec_size, camera_shift_x, camera_shift_y = calibration_data
 
         if self.size_property > 0:

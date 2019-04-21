@@ -50,6 +50,7 @@ if "bpy" in locals():
     imp.reload(solverectangle)
     imp.reload(onepoint)
     imp.reload(twopoint)
+    imp.reload(threepoint)
     imp.reload(main)
     imp.reload(panel)
 else:
@@ -66,6 +67,7 @@ else:
     from . import solverectangle
     from . import onepoint
     from . import twopoint
+    from . import threepoint
     from . import main
     from . import panel
 
