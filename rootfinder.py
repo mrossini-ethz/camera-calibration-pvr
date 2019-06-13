@@ -21,6 +21,7 @@
 # from the Proceedings of the British Machine Vision Conference, published by
 # the BMVA Press.
 
+from math import sqrt
 from . import polynomial
 
 def find_root(f, df, ddf, initial_guess = 0.0, limit = 0.00001, max_iterations = 1000):
