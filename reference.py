@@ -16,16 +16,10 @@ def camera_apply_reference_image(camera, image):
             bkg_img = img
             break
 
+    # If it needs setting
     if not bkg_img:
         # Add a background image to the camera
-        area = bpy.context.area.type
-        bpy.context.area.type = "VIEW_3D"
-        bpy.ops.view3d.background_image_add()
-        bpy.context.area.type = area
-
-        # Set the background to the reference image
-        images = camera.background_images
-        bkg_img = images[-1]
+        bkg_img = images.new()
         bkg_img.image = image
 
     # Ensure correct settings
