@@ -1,30 +1,33 @@
 # Camera Calibration using Perspective Views of Rectangles
 
 Camera Calibrabion PVR is a [Blender](http://www.blender.org) add-on for matching the 3D camera to the perspective seen in a given photograph.
-A view of a rectangle in the image is required for this calibration.
+A rectangle reference in the image is required for this calibration.
 
 ![Dragon Demo](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/dragon-demo.png)
 
 Application example for this add-on.
-The focal length, position and rotation of the camera used to take this photograph is determined from a rectangle (grid paper).
+The focal length, position and rotation of the camera are determined from a rectangle (graph paper) in the photograph.
 The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Dscanrep/)) and the array of cubes are rendered on top of the image using the calculated perspective.
 
 ### Blender Artist thread
 [Link](https://blenderartists.org/forum/showthread.php?414359-Add-on-Camera-Calibration-using-Perspective-Views-of-Rectangles&p=3145913&viewfull=1#post3145913 "Link") to Blender Artist page
 
 ## Installation
-1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) or clone the repository into a directory of your convenience.
-2. If you downloaded the zip file, extract it.
-3. Open Blender.
-4. Go to File -> User Preferences -> Addons.
-5. At the bottom of the window, chose *Install From File*.
-6. Select the file `camera-calibration-pvr.py` from the directory into which you cloned/extracted the repository.
-7. Activate the checkbox for the plugin that you will now find in the list.
-8. From startup the panel is located in the TOOLS panel, you can change this in the preference in the addon panel.
+1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) and save it in a directory of your convenience.
+2. Open Blender.
+3. In th menu go to Edit -> Preferences -> Addons.
+4. At the top of the window, chose *Install*.
+5. Select the file downloaded zip file and press *Install Addon*.
+6. Search for *Camera: Camera Calibration using Perspective Views of Rectangles* in the Addon list.
+7. Activate the checkbox for the plugin.
+8. If you want to keep the addon activated when blender restarts, open the menu (bottom left menu button) and choose *Save Preferences*.
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
 
 ## Usage
+
+### Addon Panel
+The controls for the addon can be found in the Properties panel under Scene > Camera Calibration PVR.
 
 ### Mode overview
 There are three modes that can be used to calibrate the camera:
@@ -37,34 +40,25 @@ There are three modes that can be used to calibrate the camera:
 ### Calibration of focal length, position and rotation (Solve Focal)
 Perform the following steps:
 
-1. Change the 3D view into *Top Ortho* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
-2. Load a background image for the 3D View by the 3D view properties (on the right side of the 3D view, after pressing `N`). Ensure that the image is visible from top view by using either the option *All Views* or *Top*.
-3. Optional: Got to wireframe mode (press `Z`)
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
+2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
+3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
+3. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
 4. Create a new Plane (`Shift-A` -> Mesh -> Plane).
-5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
+5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image.
 6. Leave Edit mode (`Tab` key).
-7. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view), select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal*.
+7. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal*.
 
 This sets the position, the rotation and the focal length of the camera.
-The view changes automatically to the camera and a new object is created that represents the reconstructed rectangle.
-By design, this rectangle is parallel to the x-y-plane, at the 3D cursor location.
+A new object is created that represents the reconstructed rectangle.
+By design, this rectangle is parallel to the x-y-plane, at the location of the 3D cursor.
 (This can be changed in an option, see below.)
 The name of the reconstructed rectangle is the one of the original plane, with "_Cal" appended.
 
-**Warning:** If the background image is set to 'Top' mode, then it will not be visible in camera view.
-It can safely be changed after the calibration.
-Also, the original plane may obstruct the view of the reconstructed rectangle when not in wireframe mode.
-The original plane can be hidden or deleted to make the new plane visible.
-
-![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Screenshot: Usage with Solve Focal")
-
-To reposition, rotate and/or scale the generated rectangle, be sure to reposition, rotate and/or scale the camera along with it.
-Also, see the options below.
-
 ### Calibration of focal length, vertical lens shift, position and rotation (Solve Focal+Y)
-Vertical lens shift means that the optical centre is not in the centre of the image, but shifted in vertical direction.
-This can happen when using a tilt-shift lens on a camera or when cropping the image.
-The algorithm used to make calibrations in this case has two restrictions:
+Vertical lens shift means that the optical centre is not in the centre of the image, but shifted in the vertical direction.
+This can happen when using a tilt-shift camera lens or when cropping the image.
+The algorithm used for the calibration in this case has two restrictions:
 
 - The rectangle used for calibration needs to have two edges that are parallel
 - The shift may only be along vertical direction in the image.
@@ -73,32 +67,34 @@ This applies very often in architectural photographs.
 
 To perform the calibration, go through the following steps:
 
-1. Change the 3D view into *Top Ortho* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
-2. Load a background image for the 3D View by the 3D view properties (on the right side of the 3D view, after pressing `N`). Ensure that the image is visible from top view by using either the option *All Views* or *Top*.
-3. Optional: Got to wireframe mode (press `Z`)
-4. Create a new Plane (`Shift-A` -> Mesh -> Plane).
-5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
-6. Select one of the vertices and extrude it by pressing `E`. Position it as shown in the image below. The edge must be perpendicular in the image in order to be suitable.
-7. Leave Edit mode (`Tab` key).
-8. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+Y*.
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
+2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
+3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
+4. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
+5. Create a new Plane (`Shift-A` -> Mesh -> Plane).
+6. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image. Ensure that two sides are perfectly parallel.
+7. Select one of the vertices and extrude it by pressing `E` as shown in the image below. In the 3D space of the reference image, the new edge must be perpendicular to the rectangle.
+8. Leave Edit mode (`Tab` key).
+9. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal+Y*.
 
 ![Screenshot Usage](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/shifted-perspective.png "Screenshot: Usage for Solve Focal+Y")
 
 ### Calibration of focal length, horizontal and vertical lens shift, position and rotation (Solve Focal+X+Y)
 Lens shift means that the optical centre is not in the centre of the image, but shifted off-centre.
-This can happen when using a tilt-shift lens on a camera or when cropping the image.
+This can happen when using a tilt-shift camera lens or when cropping the image.
 
 To perform the calibration, go through the following steps:
 
-1. Change the 3D view into *Top Ortho* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
-2. Load a background image for the 3D View by the 3D view properties (on the right side of the 3D view, after pressing `N`). Ensure that the image is visible from top view by using either the option *All Views* or *Top*.
-3. Optional: Got to wireframe mode (press `Z`)
-4. Create a new Plane (`Shift-A` -> Mesh -> Plane).
-5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the background image.
-6. Select one of the vertices and extrude it by pressing `E`. Position it along a line that is perpendicular to the rectangle.
-7. Repeat the last step for another vertex.
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
+2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
+3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
+4. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
+5. Create a new Plane (`Shift-A` -> Mesh -> Plane).
+6. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image.
+7. Select one of the vertices and extrude it by pressing `E`. In the 3D space of the reference image, the new edge must be perpendicular to the rectangle.
+7. Repeat the last step for a second vertex.
 8. Leave Edit mode (`Tab` key).
-9. Ensure that the plane is selected. In the 3D view tools (on the left side of the 3D view) select the Tools tab and find the *Camera Calibration PVR* menu. Press *Solve Focal+X+Y*.
+9. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal+X+Y*.
 
 ### Options
 There are options to the camera calibration:
