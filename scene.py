@@ -22,6 +22,7 @@
 # the BMVA Press.
 
 import bpy
+import math
 import mathutils
 
 def object_name_append(name, suffix):
@@ -65,10 +66,10 @@ def get_vertical_mode_matrix(is_vertical, camera_rotation):
         vert_mode_rotate_x = abs(up_vec[0]) < abs(up_vec[1])
         # Create rotation matrix
         if vert_mode_rotate_x:
-            vert_angle = pi / 2 if up_vec[1] > 0 else -pi / 2
+            vert_angle = math.pi / 2 if up_vec[1] > 0 else -math.pi / 2
             return mathutils.Matrix().Rotation(vert_angle, 3, "X")
         else:
-            vert_angle = pi / 2 if up_vec[0] < 0 else -pi / 2
+            vert_angle = math.pi / 2 if up_vec[0] < 0 else -math.pi / 2
             return mathutils.Matrix().Rotation(vert_angle, 3, "Y")
     else:
         return mathutils.Matrix().Identity(3)
