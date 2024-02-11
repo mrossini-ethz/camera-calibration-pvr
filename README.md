@@ -49,6 +49,8 @@ Perform the following steps:
 6. Leave Edit mode (`Tab` key).
 7. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal*.
 
+![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui2.png "Screenshot Usage")
+
 This sets the position, the rotation and the focal length of the camera.
 A new object is created that represents the reconstructed rectangle.
 By design, this rectangle is parallel to the x-y-plane, at the location of the 3D cursor.
