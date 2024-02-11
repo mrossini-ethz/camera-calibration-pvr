@@ -13,13 +13,13 @@ The dragon (credit: [Stanford University](https://graphics.stanford.edu/data/3Ds
 [Link](https://blenderartists.org/forum/showthread.php?414359-Add-on-Camera-Calibration-using-Perspective-Views-of-Rectangles&p=3145913&viewfull=1#post3145913 "Link") to Blender Artist page
 
 ## Installation
-1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) and save it in a directory of your convenience.
+1. Download the latest [release](https://github.com/mrossini-ethz/camera-calibration-pvr/releases) as a ZIP file and save it in a directory of your convenience. Ensure that the filename contains only one period character (`.`), because it seems Blender has issues otherwise.
 2. Open Blender.
-3. In th menu go to Edit -> Preferences -> Addons.
-4. At the top of the window, chose *Install*.
-5. Select the file downloaded zip file and press *Install Addon*.
-6. Search for *Camera: Camera Calibration using Perspective Views of Rectangles* in the Addon list.
-7. Activate the checkbox for the plugin.
+3. In the menu go to Edit -> Preferences -> Addons.
+4. At the top right of the window, chose *Install*.
+5. Select the downloaded zip file and press *Install Addon*.
+6. Search for *Camera: Camera Calibration using Perspective Views of Rectangles* in the addon list.
+7. Activate the checkbox for the addon.
 8. If you want to keep the addon activated when blender restarts, open the menu (bottom left menu button) and choose *Save Preferences*.
 
 ![Screenshot Installation](https://github.com/mrossini-ethz/camera-calibration-pvr/blob/master/doc/ui1.png "Screenshot Installation")
@@ -32,7 +32,7 @@ The controls for the addon can be found in the Properties panel under Scene > Ca
 ### Mode overview
 There are three modes that can be used to calibrate the camera:
 
-- **Solve Focal**: Uses the image of a single rectangle to calibrate the camera. This is the mode most often used. However, it does not work if the photograph was taken with a tilt-shift lens and/or was cropped. Furthermore, it can not be used if any two edges of the rectangle appear parallel in the image.
+- **Solve Focal**: Uses the image with a single rectangle to calibrate the camera. This is the mode most often used. However, it does not work if the photograph was cropped and/or taken with a tilt-shift lens. Furthermore, it can not be used if any two edges of the rectangle appear parallel in the image.
 - **Solve Focal+Y**: This is a special mode often used for architectural images where a tilt-shift lens was used. This mode assumes the lens was set up in such a way that vertical lines appear vertical in the image. Therefore, the reference rectangle is required to have exactly two parallel edges.
 - **Solve Focal+X+Y**: This is the more general mode that allows for shift in both vertical and horizontal direction. This is often useful when the image was cropped. The rectangle used for reference may not have any parallel edges.
 - **Solve 1-point**: This mode solves the 1-point perspective including camera shift. The reference rectangle size or the focal length of the camera must be known.
@@ -40,19 +40,18 @@ There are three modes that can be used to calibrate the camera:
 ### Calibration of focal length, position and rotation (Solve Focal)
 Perform the following steps:
 
-1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
-2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`).
+2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file containing a rectangle.
 3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
-3. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
+3. Optional: Go to wireframe mode (press `Z` in the 3D view, then `4`).
 4. Create a new Plane (`Shift-A` -> Mesh -> Plane).
-5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image.
+5. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image. Do this as accurately as possible.
 6. Leave Edit mode (`Tab` key).
 7. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal*.
 
 This sets the position, the rotation and the focal length of the camera.
 A new object is created that represents the reconstructed rectangle.
 By design, this rectangle is parallel to the x-y-plane, at the location of the 3D cursor.
-(This can be changed in an option, see below.)
 The name of the reconstructed rectangle is the one of the original plane, with "_Cal" appended.
 
 ### Calibration of focal length, vertical lens shift, position and rotation (Solve Focal+Y)
@@ -67,12 +66,12 @@ This applies very often in architectural photographs.
 
 To perform the calibration, go through the following steps:
 
-1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`).
 2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
 3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
-4. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
+4. Optional: Go to wireframe mode (press `Z` in the 3D view, then `4`).
 5. Create a new Plane (`Shift-A` -> Mesh -> Plane).
-6. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image. Ensure that two sides are perfectly parallel.
+6. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image. Ensure that two sides are perfectly parallel and vertical.
 7. Select one of the vertices and extrude it by pressing `E` as shown in the image below. In the 3D space of the reference image, the new edge must be perpendicular to the rectangle.
 8. Leave Edit mode (`Tab` key).
 9. Ensure that the plane is selected. In the Camera Calibration PVR panel press *Solve Focal+Y*.
@@ -85,10 +84,10 @@ This can happen when using a tilt-shift camera lens or when cropping the image.
 
 To perform the calibration, go through the following steps:
 
-1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`, then `Numpad 5`).
+1. Change the 3D view into *Top Orthographic* mode (Top view in Orthographic View mode: press `Numpad 7`).
 2. In the 3D view, create a background image (`Shift-A` -> Image -> Background). Choose your reference image file.
 3. In the properties panel under Scene > Camera Calibration PVR select the background image (default name: Empty).
-4. Optional: Got to wireframe mode (press `Z` in the 3D view, then `4`).
+4. Optional: Go to wireframe mode (press `Z` in the 3D view, then `4`).
 5. Create a new Plane (`Shift-A` -> Mesh -> Plane).
 6. Enter Edit mode (`Tab` key) and move the plane vertices to the corners of the rectangle in the reference image.
 7. Select one of the vertices and extrude it by pressing `E`. In the 3D space of the reference image, the new edge must be perpendicular to the rectangle.
@@ -103,7 +102,7 @@ There are options to the camera calibration:
 - **Vertical orientation** places the reconstructed rectangle in vertical orientation instead of parallel to the x-y-Plane.
 
 ### Demos
-Here are screen casts that demonstrate the usage.
+Here are screen casts (from a previous blender and addon version) that demonstrate the usage.
 
 #### Focal
 ![Screen Cast Usage](https://raw.githubusercontent.com/wiki/mrossini-ethz/camera-calibration-pvr/images/focal.gif "Screen cast: Usage for Solve Focal")
