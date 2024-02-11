@@ -148,11 +148,10 @@ class CameraCalibration_F_PR_S_Operator(bpy.types.Operator):
         # Set extrinsic camera parameters and add a new rectangle
         scene.update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scn, w, h, obj.name, coords, size_factor)
 
-        # Switch to the active camera
-        area = bpy.context.area.type
-        bpy.context.area.type = "VIEW_3D"
-        bpy.ops.view3d.view_camera()
-        bpy.context.area.type = area
+        # Switch to the active camera (if there is a 3D view)
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D" and len(area.spaces) > 0:
+                area.spaces[0].region_3d.view_perspective = "CAMERA"
 
         return {'FINISHED'}
 
@@ -241,11 +240,10 @@ class CameraCalibration_FX_PR_V_Operator(bpy.types.Operator):
         # Set extrinsic camera parameters and add a new rectangle
         scene.update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scn, w, h, obj.name, coords, size_factor)
 
-        # Switch to the active camera
-        area = bpy.context.area.type
-        bpy.context.area.type = "VIEW_3D"
-        bpy.ops.view3d.view_camera()
-        bpy.context.area.type = area
+        # Switch to the active camera (if there is a 3D view)
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D" and len(area.spaces) > 0:
+                area.spaces[0].region_3d.view_perspective = "CAMERA"
 
         return {'FINISHED'}
 
@@ -339,11 +337,10 @@ class CameraCalibration_FXY_PR_VV_Operator(bpy.types.Operator):
         # Set background image
         reference.camera_apply_reference_image(cam, image)
 
-        # Switch to the active camera
-        area = bpy.context.area.type
-        bpy.context.area.type = "VIEW_3D"
-        bpy.ops.view3d.view_camera()
-        bpy.context.area.type = area
+        # Switch to the active camera (if there is a 3D view)
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D" and len(area.spaces) > 0:
+                area.spaces[0].region_3d.view_perspective = "CAMERA"
 
         return {'FINISHED'}
 
@@ -446,11 +443,10 @@ class CameraCalibration_FXY_P_S_Operator(bpy.types.Operator):
         # Set extrinsic camera parameters and add a new rectangle
         scene.update_scene(cam_obj, cam_pos, cam_rot, self.vertical_property, scn, w, h, obj.name, coords, 1.0)
 
-        # Switch to the active camera
-        area = bpy.context.area.type
-        bpy.context.area.type = "VIEW_3D"
-        bpy.ops.view3d.view_camera()
-        bpy.context.area.type = area
+        # Switch to the active camera (if there is a 3D view)
+        for area in bpy.context.screen.areas:
+            if area.type == "VIEW_3D" and len(area.spaces) > 0:
+                area.spaces[0].region_3d.view_perspective = "CAMERA"
 
         return {'FINISHED'}
 

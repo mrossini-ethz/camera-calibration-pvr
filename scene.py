@@ -36,6 +36,9 @@ def get_or_create_camera(scn):
         bpy.ops.object.camera_add()
         cam_obj = bpy.context.active_object
     cam = bpy.data.cameras[cam_obj.data.name]
+    # Set the camera as active camera in the scene, if it doesn't have one already
+    if not scn.camera:
+        scn.camera = cam_obj
     return (cam_obj, cam)
 
 def set_camera_parameters(camera, lens = 35.0, shift_x = 0.0, shift_y = 0.0, sensor_size = 32.0):
